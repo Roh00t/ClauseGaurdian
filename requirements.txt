@@ -19,7 +19,7 @@ lxml>=5.0.0                       # Fast BS4 parser backend — required for rel
 # ── AI / LLM ─────────────────────────────────────────────────────────────────
 anthropic>=0.40.0                 # Primary: claude-sonnet-4-6 via Anthropic API
 openai>=1.55.0                    # Fallback: TokenRouter / Kimi K2.6 (OpenAI-compatible)
-
+daytona-sdk>=0.10.0               # Sandboxed execution for PII redaction + report attestation
 # ── Security & Rate Limiting ──────────────────────────────────────────────────
 slowapi>=0.1.9                    # Rate limiting (5 req/min per IP on /api/analyze)
 
