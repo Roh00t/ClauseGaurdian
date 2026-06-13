@@ -1,237 +1,1088 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>ClauseGuard</title>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ClauseGuard — Employment Contract Analyser</title>
 <style>
-  :root {
-    --serious: #c0322b; --serious-bg: #fdecea;
-    --moderate: #b26a00; --moderate-bg: #fff4e0;
-    --info: #1565c0; --info-bg: #e8f1fb;
-    --ink: #1d2329; --muted: #5b6770; --line: #e2e6ea; --bg: #f6f8fa;
-  }
-  * { box-sizing: border-box; }
-  body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    color: var(--ink); background: var(--bg); margin: 0; line-height: 1.5;
-  }
-  .wrap { max-width: 820px; margin: 0 auto; padding: 24px 18px 80px; }
-  h1 { margin: 0 0 2px; font-size: 26px; }
-  .tag { color: var(--muted); margin: 0 0 18px; }
-  .card { background: #fff; border: 1px solid var(--line); border-radius: 10px;
-          padding: 18px; margin: 14px 0; }
-  .disclaimer { background: #fff8e1; border: 1px solid #f0d98c; border-radius: 8px;
-                padding: 12px 14px; font-size: 13.5px; }
-  .notice { font-size: 13.5px; color: #4a3c00; background: #fffdf5;
-            border: 1px dashed #e0c97a; border-radius: 8px; padding: 12px 14px; margin: 12px 0; }
-  button { font: inherit; background: var(--ink); color: #fff; border: 0;
-           border-radius: 7px; padding: 9px 16px; cursor: pointer; }
-  button.secondary { background: #fff; color: var(--ink); border: 1px solid var(--line); }
-  button:disabled { opacity: .5; cursor: not-allowed; }
-  input[type=file] { font: inherit; }
-  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
-  pre.redacted { white-space: pre-wrap; word-break: break-word; background: var(--bg);
-                 border: 1px solid var(--line); border-radius: 8px; padding: 12px;
-                 max-height: 320px; overflow: auto; font-size: 13px; }
-  mark { background: #ffe08a; color: #6b4e00; padding: 0 3px; border-radius: 3px;
-         font-weight: 600; }
-  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
-  .chip { font-size: 12.5px; padding: 3px 10px; border-radius: 20px; border: 1px solid var(--line); }
-  .flag { border-left: 5px solid var(--line); border-radius: 8px; padding: 12px 14px;
-          margin: 10px 0; background: #fff; border-top: 1px solid var(--line);
-          border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-  .flag.serious  { border-left-color: var(--serious);  background: var(--serious-bg); }
-  .flag.moderate { border-left-color: var(--moderate); background: var(--moderate-bg); }
-  .flag.info     { border-left-color: var(--info);     background: var(--info-bg); }
-  .sev { display: inline-block; font-size: 11.5px; font-weight: 700; text-transform: uppercase;
-         letter-spacing: .04em; padding: 2px 8px; border-radius: 4px; color: #fff; }
-  .sev.serious { background: var(--serious); } .sev.moderate { background: var(--moderate); }
-  .sev.info { background: var(--info); }
-  .flag h4 { margin: 8px 0 4px; font-size: 15px; }
-  .flag .clause { font-size: 12.5px; color: var(--muted); font-style: italic; }
-  .guidance { font-size: 13px; }
-  .guidance a { color: var(--info); }
-  .guidance .lbl { color: var(--muted); font-size: 12px; font-style: italic; }
-  .receipt { font-family: ui-monospace, Menlo, monospace; font-size: 12px;
-             background: #0f1720; color: #cfe3f5; border-radius: 8px; padding: 14px;
-             white-space: pre-wrap; word-break: break-all; }
-  .err { color: var(--serious); background: var(--serious-bg); border: 1px solid #f3b9b4;
-         border-radius: 8px; padding: 12px 14px; }
-  .muted { color: var(--muted); font-size: 13px; }
-  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #ccc;
-             border-top-color: var(--ink); border-radius: 50%; animation: spin .8s linear infinite;
-             vertical-align: middle; }
-  @keyframes spin { to { transform: rotate(360deg); } }
-  .hidden { display: none; }
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+:root{
+  --bg:         #1a1a1a;
+  --bg-sidebar: #111111;
+  --surface:    #242424;
+  --surface-2:  #2e2e2e;
+  --border:     #2a2a2a;
+  --border-2:   #363636;
+  --text:       #ececec;
+  --text-2:     #999;
+  --text-3:     #666;
+  --accent:     #d97706;
+  --accent-dim: rgba(217,119,6,0.12);
+  --green:      #22c55e;
+  --red:        #ef4444;
+  --orange:     #f97316;
+  --yellow:     #eab308;
+  --blue:       #60a5fa;
+  --radius:     10px;
+  --radius-sm:  6px;
+  --font: -apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;
+  --mono: 'Courier New',Courier,monospace;
+}
+
+body{
+  font-family:var(--font);
+  background:var(--bg);
+  color:var(--text);
+  height:100vh;
+  display:flex;
+  overflow:hidden;
+}
+
+/* ── SIDEBAR ────────────────────────────────────────────────── */
+.sidebar{
+  width:256px;
+  flex-shrink:0;
+  background:var(--bg-sidebar);
+  border-right:1px solid var(--border);
+  display:flex;
+  flex-direction:column;
+  height:100vh;
+  overflow:hidden;
+}
+.sidebar-logo{
+  padding:20px 16px 14px;
+  border-bottom:1px solid var(--border);
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.sidebar-logo svg{display:block}
+.sidebar-logo-text{
+  font-size:14px;
+  font-weight:600;
+  letter-spacing:-.2px;
+}
+.sidebar-logo-sub{font-size:11px;color:var(--text-3);margin-top:1px}
+.new-btn{
+  margin:12px;
+  padding:10px 14px;
+  background:var(--accent);
+  color:#fff;
+  border:none;
+  border-radius:var(--radius-sm);
+  font:600 13px var(--font);
+  cursor:pointer;
+  display:flex;
+  align-items:center;
+  gap:8px;
+  transition:opacity .15s;
+}
+.new-btn:hover{opacity:.88}
+.sidebar-section-label{
+  padding:10px 16px 4px;
+  font-size:10px;
+  font-weight:600;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+  color:var(--text-3);
+}
+.session-list{
+  flex:1;
+  overflow-y:auto;
+  padding:4px 8px 12px;
+}
+.session-list::-webkit-scrollbar{width:4px}
+.session-list::-webkit-scrollbar-track{background:transparent}
+.session-list::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:2px}
+.session-item{
+  padding:9px 10px;
+  border-radius:var(--radius-sm);
+  cursor:pointer;
+  margin-bottom:2px;
+  transition:background .12s;
+}
+.session-item:hover{background:var(--surface)}
+.session-item.active{background:var(--surface)}
+.session-date{font-size:10px;color:var(--text-3);margin-bottom:3px}
+.session-files{font-size:12px;color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.session-badge{
+  display:inline-block;
+  font-size:9px;
+  font-weight:700;
+  padding:1px 5px;
+  border-radius:3px;
+  margin-top:4px;
+}
+.badge-critical{background:rgba(239,68,68,.2);color:#ef4444}
+.badge-serious{background:rgba(249,115,22,.2);color:#f97316}
+.badge-moderate{background:rgba(234,179,8,.2);color:#eab308}
+.sidebar-footer{
+  padding:12px;
+  border-top:1px solid var(--border);
+  font-size:11px;
+  color:var(--text-3);
+}
+
+/* ── MAIN ───────────────────────────────────────────────────── */
+.main{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  height:100vh;
+  overflow:hidden;
+}
+.topbar{
+  height:52px;
+  border-bottom:1px solid var(--border);
+  display:flex;
+  align-items:center;
+  padding:0 20px;
+  gap:12px;
+  flex-shrink:0;
+}
+.topbar-title{font-size:14px;font-weight:600}
+.topbar-sub{font-size:12px;color:var(--text-3)}
+.reg-status{
+  margin-left:auto;
+  font-size:11px;
+  color:var(--text-3);
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.reg-dot{
+  width:7px;height:7px;
+  border-radius:50%;
+  background:var(--text-3);
+}
+.reg-dot.live{background:var(--green)}
+
+.content-area{
+  flex:1;
+  overflow-y:auto;
+  display:flex;
+  flex-direction:column;
+}
+.content-area::-webkit-scrollbar{width:5px}
+.content-area::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:3px}
+
+/* ── EMPTY STATE ─────────────────────────────────────────────── */
+.empty-state{
+  flex:1;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  padding:40px 24px;
+  text-align:center;
+}
+.empty-icon{
+  width:56px;height:56px;
+  background:var(--accent-dim);
+  border-radius:16px;
+  display:flex;align-items:center;justify-content:center;
+  margin-bottom:20px;
+}
+.empty-title{font-size:20px;font-weight:600;margin-bottom:8px}
+.empty-desc{font-size:14px;color:var(--text-2);max-width:420px;line-height:1.6}
+
+/* ── DROP ZONE ────────────────────────────────────────────────── */
+.upload-bar{
+  padding:16px;
+  border-top:1px solid var(--border);
+  flex-shrink:0;
+}
+.drop-zone{
+  border:1.5px dashed var(--border-2);
+  border-radius:var(--radius);
+  padding:20px;
+  text-align:center;
+  cursor:pointer;
+  transition:border-color .15s, background .15s;
+  background:var(--surface);
+}
+.drop-zone:hover,.drop-zone.drag-over{
+  border-color:var(--accent);
+  background:var(--accent-dim);
+}
+.drop-zone-text{font-size:13px;color:var(--text-2)}
+.drop-zone-sub{font-size:11px;color:var(--text-3);margin-top:4px}
+#fileInput{display:none}
+.file-chips{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+  margin-top:10px;
+}
+.chip{
+  display:flex;align-items:center;gap:6px;
+  background:var(--surface-2);
+  border:1px solid var(--border-2);
+  border-radius:6px;
+  padding:5px 10px;
+  font-size:12px;
+  color:var(--text);
+}
+.chip-remove{
+  cursor:pointer;
+  color:var(--text-3);
+  font-size:14px;
+  line-height:1;
+  border:none;background:none;color:var(--text-2);
+  padding:0;
+}
+.chip-remove:hover{color:var(--red)}
+.upload-actions{
+  display:flex;align-items:center;gap:10px;
+  margin-top:12px;
+}
+.analyze-btn{
+  padding:10px 20px;
+  background:var(--accent);
+  color:#fff;
+  border:none;
+  border-radius:var(--radius-sm);
+  font:600 13px var(--font);
+  cursor:pointer;
+  transition:opacity .15s;
+  display:flex;align-items:center;gap:8px;
+}
+.analyze-btn:hover{opacity:.88}
+.analyze-btn:disabled{opacity:.4;cursor:not-allowed}
+.clear-btn{
+  padding:10px 14px;
+  background:transparent;
+  color:var(--text-2);
+  border:1px solid var(--border-2);
+  border-radius:var(--radius-sm);
+  font:13px var(--font);
+  cursor:pointer;
+  transition:border-color .15s;
+}
+.clear-btn:hover{border-color:var(--text-3)}
+
+/* ── ANALYSIS OUTPUT ────────────────────────────────────────── */
+.analysis-area{
+  padding:24px;
+  display:flex;
+  flex-direction:column;
+  gap:20px;
+  max-width:900px;
+  width:100%;
+  margin:0 auto;
+}
+
+/* Message bubble */
+.msg{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:18px 20px;
+}
+.msg-header{
+  display:flex;align-items:center;gap:10px;
+  margin-bottom:12px;
+  font-size:12px;
+  color:var(--text-3);
+}
+.msg-icon{
+  width:28px;height:28px;
+  border-radius:6px;
+  background:var(--accent-dim);
+  display:flex;align-items:center;justify-content:center;
+  flex-shrink:0;
+}
+
+/* Severity banner */
+.severity-banner{
+  border-radius:var(--radius-sm);
+  padding:14px 16px;
+  display:flex;align-items:flex-start;gap:12px;
+  margin-bottom:4px;
+}
+.sev-critical{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3)}
+.sev-serious{background:rgba(249,115,22,.1);border:1px solid rgba(249,115,22,.3)}
+.sev-moderate{background:rgba(234,179,8,.1);border:1px solid rgba(234,179,8,.3)}
+.sev-pill{
+  font-size:10px;font-weight:700;
+  padding:3px 8px;
+  border-radius:4px;
+  flex-shrink:0;
+  margin-top:1px;
+}
+.pill-critical{background:rgba(239,68,68,.25);color:#ef4444}
+.pill-serious{background:rgba(249,115,22,.25);color:#f97316}
+.pill-moderate{background:rgba(234,179,8,.25);color:#eab308}
+.pill-informational{background:rgba(96,165,250,.2);color:#60a5fa}
+
+.severity-text{font-size:13px;line-height:1.6;color:var(--text)}
+
+/* Section headings */
+.section-h{
+  font-size:11px;font-weight:700;
+  letter-spacing:.07em;text-transform:uppercase;
+  color:var(--text-3);
+  margin-bottom:10px;
+  display:flex;align-items:center;gap:8px;
+}
+.section-h::after{
+  content:'';flex:1;
+  height:1px;background:var(--border);
+}
+
+/* Docs analyzed */
+.doc-cards{display:flex;flex-direction:column;gap:8px}
+.doc-card{
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  border-radius:var(--radius-sm);
+  padding:12px 14px;
+}
+.doc-card-header{
+  display:flex;align-items:center;gap:8px;
+  margin-bottom:6px;
+}
+.doc-name{font-size:13px;font-weight:600;flex:1}
+.doc-signed{
+  font-size:10px;font-weight:600;
+  padding:2px 7px;border-radius:4px;
+}
+.signed-yes{background:rgba(34,197,94,.15);color:var(--green)}
+.signed-no{background:rgba(239,68,68,.15);color:var(--red)}
+.signed-partial{background:rgba(234,179,8,.15);color:var(--yellow)}
+.doc-facts{
+  list-style:none;
+  font-size:12px;
+  color:var(--text-2);
+  line-height:1.6;
+}
+.doc-facts li::before{content:'· ';color:var(--text-3)}
+
+/* Red flags */
+.flag-list{display:flex;flex-direction:column;gap:10px}
+.flag-card{
+  border-radius:var(--radius-sm);
+  border:1px solid;
+  overflow:hidden;
+}
+.flag-card.sev-CRITICAL{border-color:rgba(239,68,68,.35)}
+.flag-card.sev-SERIOUS{border-color:rgba(249,115,22,.3)}
+.flag-card.sev-MODERATE{border-color:rgba(234,179,8,.3)}
+.flag-card.sev-INFORMATIONAL{border-color:var(--border-2)}
+.flag-header{
+  display:flex;align-items:center;gap:10px;
+  padding:11px 14px;
+  cursor:pointer;
+  user-select:none;
+}
+.flag-card.sev-CRITICAL .flag-header{background:rgba(239,68,68,.08)}
+.flag-card.sev-SERIOUS .flag-header{background:rgba(249,115,22,.07)}
+.flag-card.sev-MODERATE .flag-header{background:rgba(234,179,8,.06)}
+.flag-card.sev-INFORMATIONAL .flag-header{background:var(--surface-2)}
+.flag-num{
+  font-size:10px;font-weight:700;color:var(--text-3);
+  width:20px;flex-shrink:0;
+}
+.flag-title{font-size:13px;font-weight:600;flex:1}
+.flag-chevron{
+  font-size:12px;color:var(--text-3);
+  transition:transform .2s;
+}
+.flag-card.open .flag-chevron{transform:rotate(180deg)}
+.flag-body{
+  display:none;
+  padding:14px;
+  border-top:1px solid var(--border);
+  background:var(--surface-2);
+  font-size:13px;
+  line-height:1.65;
+}
+.flag-card.open .flag-body{display:block}
+.flag-row{margin-bottom:10px}
+.flag-label{
+  font-size:10px;font-weight:600;letter-spacing:.06em;
+  text-transform:uppercase;color:var(--text-3);
+  margin-bottom:3px;
+}
+.flag-value{color:var(--text)}
+.flag-quote{
+  background:var(--surface);
+  border-left:3px solid var(--accent);
+  padding:8px 12px;
+  font:13px var(--mono);
+  color:var(--text-2);
+  border-radius:0 4px 4px 0;
+  margin-top:6px;
+}
+.flag-mom{
+  background:rgba(96,165,250,.08);
+  border:1px solid rgba(96,165,250,.2);
+  border-radius:4px;
+  padding:8px 10px;
+  font-size:12px;
+  color:var(--blue);
+}
+
+/* Actions */
+.action-list{display:flex;flex-direction:column;gap:8px}
+.action-item{
+  display:flex;gap:12px;
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  border-radius:var(--radius-sm);
+  padding:12px 14px;
+}
+.action-num{
+  font-size:16px;font-weight:800;
+  color:var(--accent);
+  flex-shrink:0;
+  width:22px;
+}
+.action-body{}
+.action-title{font-size:13px;font-weight:600;margin-bottom:4px}
+.action-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:6px}
+.tag{
+  font-size:10px;font-weight:600;
+  padding:2px 7px;border-radius:4px;
+  background:var(--surface);
+  border:1px solid var(--border-2);
+  color:var(--text-2);
+}
+.tag-channel{background:rgba(217,119,6,.12);color:var(--accent);border-color:rgba(217,119,6,.25)}
+
+/* Arguments */
+.arg-list{display:flex;flex-direction:column;gap:8px}
+.arg-item{
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  border-radius:var(--radius-sm);
+  padding:12px 14px;
+}
+.arg-header{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.arg-strength{
+  font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;
+}
+.strength-strong{background:rgba(34,197,94,.15);color:var(--green)}
+.strength-moderate{background:rgba(234,179,8,.15);color:var(--yellow)}
+.strength-weak{background:rgba(239,68,68,.15);color:var(--red)}
+.arg-text{font-size:13px;color:var(--text);margin-bottom:6px;line-height:1.55}
+.arg-evidence{font-size:12px;color:var(--text-2)}
+
+/* MOM Draft */
+.draft-box{
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  border-radius:var(--radius-sm);
+  overflow:hidden;
+}
+.draft-header{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:10px 14px;
+  border-bottom:1px solid var(--border);
+  background:var(--surface);
+}
+.draft-title{font-size:12px;font-weight:600}
+.copy-btn{
+  font-size:11px;font-weight:600;
+  padding:5px 10px;
+  background:var(--surface-2);
+  border:1px solid var(--border-2);
+  border-radius:4px;
+  color:var(--text-2);
+  cursor:pointer;
+  transition:border-color .15s,color .15s;
+}
+.copy-btn:hover{border-color:var(--accent);color:var(--accent)}
+.draft-to{
+  padding:8px 14px;
+  font-size:12px;
+  color:var(--text-2);
+  border-bottom:1px solid var(--border);
+}
+.draft-subject{
+  padding:10px 14px;
+  font-size:13px;font-weight:600;
+  border-bottom:1px solid var(--border);
+}
+.draft-body{
+  padding:14px;
+  font-size:13px;
+  line-height:1.75;
+  white-space:pre-wrap;
+  color:var(--text);
+  max-height:320px;
+  overflow-y:auto;
+}
+.draft-body::-webkit-scrollbar{width:4px}
+.draft-body::-webkit-scrollbar-thumb{background:var(--border-2);border-radius:2px}
+
+/* Exit checklist */
+.checklist{display:flex;flex-direction:column;gap:6px}
+.check-item{
+  display:flex;align-items:flex-start;gap:10px;
+  background:var(--surface-2);
+  border:1px solid var(--border);
+  border-radius:var(--radius-sm);
+  padding:10px 12px;
+}
+.check-icon{font-size:14px;flex-shrink:0;margin-top:1px}
+.check-body{}
+.check-title{font-size:13px;font-weight:500}
+.check-reason{font-size:11px;color:var(--text-2);margin-top:2px}
+
+/* Disclaimer */
+.disclaimer{
+  font-size:11px;
+  color:var(--text-3);
+  text-align:center;
+  padding:8px 0 4px;
+  line-height:1.5;
+}
+
+/* Loading */
+.loading-overlay{
+  position:fixed;inset:0;
+  background:rgba(0,0,0,.6);
+  display:flex;align-items:center;justify-content:center;
+  z-index:100;
+}
+.loading-box{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:32px 40px;
+  text-align:center;
+}
+.spinner{
+  width:40px;height:40px;
+  border:3px solid var(--border-2);
+  border-top-color:var(--accent);
+  border-radius:50%;
+  animation:spin .8s linear infinite;
+  margin:0 auto 16px;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{font-size:14px;color:var(--text-2)}
+.loading-sub{font-size:12px;color:var(--text-3);margin-top:4px}
+
+.toast{
+  position:fixed;bottom:24px;right:24px;
+  background:var(--surface-2);
+  border:1px solid var(--border-2);
+  border-radius:var(--radius-sm);
+  padding:10px 16px;
+  font-size:13px;
+  color:var(--text);
+  z-index:200;
+  opacity:0;
+  transition:opacity .2s;
+  pointer-events:none;
+}
+.toast.show{opacity:1}
+
+@media(max-width:640px){
+  .sidebar{display:none}
+  .analysis-area{padding:16px}
+}
 </style>
 </head>
 <body>
-<div class="wrap">
-  <h1>ClauseGuard</h1>
-  <p class="tag">Upload an employment contract &rarr; plain-English summary, red flags, live guidance, and a tamper-evident signed receipt.</p>
 
-  <div class="disclaimer" id="disclaimer">
-    <strong>Not legal advice, not exhaustive.</strong> A &ldquo;no red flags found&rdquo; result does
-    not guarantee a contract is fair. Singapore employment contracts (MVP scope). Highlights clauses
-    worth discussing with HR or a free legal advisor (e.g. probono.sg).
+<!-- ── SIDEBAR ──────────────────────────────────────────────── -->
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+      <rect width="28" height="28" rx="7" fill="#d97706"/>
+      <path d="M8 10h12M8 14h8M8 18h10" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>
+      <circle cx="21" cy="18" r="4.5" fill="#1a1a1a" stroke="#d97706" stroke-width="1.2"/>
+      <path d="M19.5 18l1 1 1.5-1.5" stroke="#d97706" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <div>
+      <div class="sidebar-logo-text">ClauseGuard</div>
+      <div class="sidebar-logo-sub">Your virtual rights officer</div>
+    </div>
   </div>
 
-  <!-- STEP 1: UPLOAD -->
-  <div class="card" id="upload-card">
-    <h3>1. Upload</h3>
-    <div class="notice">
-      You can upload a real contract or use the demo contract. Automated redaction below is
-      <strong>best-effort</strong> (catches NRIC numbers, emails, phone numbers, common address
-      patterns) and is <strong>NOT guaranteed complete</strong> &mdash; it will not catch names in
-      prose, signatures, or other identifying context. Do not upload a document containing
-      information you would not want processed by a third-party AI service even after this
-      redaction step.
-    </div>
-    <div class="row">
-      <input type="file" id="file" accept="application/pdf" />
-      <button id="redact-btn">Extract &amp; Redact</button>
-    </div>
-    <p class="muted" id="upload-status"></p>
+  <button class="new-btn" onclick="newAnalysis()">
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+      <path d="M7 1v12M1 7h12" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+    New Analysis
+  </button>
+
+  <div class="sidebar-section-label">Recent Sessions</div>
+  <div class="session-list" id="sessionList">
+    <div style="padding:8px;font-size:12px;color:var(--text-3)">Loading sessions…</div>
   </div>
 
-  <!-- STEP 2: REDACTION CONFIRMATION -->
-  <div class="card hidden" id="redact-card">
-    <h3>2. Review redaction &mdash; nothing has left your machine yet</h3>
-    <p class="muted">These items were redacted <em>before</em> any text is sent to the AI model.
-       Review below, then confirm to proceed. Highlighted <mark>[REDACTED_*]</mark> tokens replace the original values.</p>
-    <div class="chips" id="redact-chips"></div>
-    <pre class="redacted" id="redacted-text"></pre>
-    <div class="row">
-      <button id="confirm-btn">Confirm &amp; Analyze</button>
-      <button class="secondary" id="cancel-btn">Cancel</button>
+  <div class="sidebar-footer">
+    Data sourced from mom.gov.sg · For reference only
+  </div>
+</aside>
+
+<!-- ── MAIN ─────────────────────────────────────────────────── -->
+<main class="main">
+  <div class="topbar">
+    <div>
+      <div class="topbar-title">Your virtual employment-rights officer</div>
     </div>
-    <p class="muted" id="analyze-status"></p>
+    <div class="reg-status" id="regStatus">
+      <div class="reg-dot" id="regDot"></div>
+      <span id="regLabel">Checking MOM regulations…</span>
+    </div>
   </div>
 
-  <!-- STEP 3: RESULTS -->
-  <div class="card hidden" id="results-card">
-    <h3>3. Analysis</h3>
-    <div id="summary"></div>
-    <h4>Red flags</h4>
-    <div id="flags"></div>
-    <h4>Related regulatory guidance</h4>
-    <p class="muted">Labelled <em>related guidance &mdash; verify relevance</em>. These are live web
-       search results, <strong>not proof</strong> and not legal authority.</p>
-    <div id="guidance"></div>
-    <h4>Attestation receipt</h4>
-    <p class="muted">This signature proves the report is <strong>UNALTERED</strong> since signing.
-       It does <strong>not</strong> prove the analysis is correct.</p>
-    <div class="receipt" id="receipt"></div>
+  <div class="content-area" id="contentArea">
+    <!-- Empty state shown initially -->
+    <div class="empty-state" id="emptyState">
+      <div class="empty-icon">
+        <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+          <path d="M7 4h10l5 5v15H7V4z" stroke="#d97706" stroke-width="1.5" stroke-linejoin="round" fill="none"/>
+          <path d="M17 4v5h5" stroke="#d97706" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M11 13h6M11 17h4" stroke="#d97706" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="empty-title">Let's review your employment documents</div>
+      <div class="empty-desc">
+        Drop in your contract, training forms, LOA, or any employment-related PDFs.
+        As your virtual employment-rights officer, ClauseGuard reviews them against
+        MOM Singapore regulations and flags red flags, malpractice, and the exact
+        actions you can take — in plain English.
+      </div>
+    </div>
+
+    <!-- Analysis output rendered here -->
+    <div class="analysis-area" id="analysisArea" style="display:none"></div>
+  </div>
+
+  <!-- Upload bar -->
+  <div class="upload-bar">
+    <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+      <div class="drop-zone-text">
+        <svg style="display:inline;margin-right:6px;vertical-align:middle" width="16" height="16" viewBox="0 0 16 16" fill="none">
+          <path d="M8 11V3M5 6l3-3 3 3" stroke="#999" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M2 13h12" stroke="#999" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        Drop PDFs here or click to browse
+      </div>
+      <div class="drop-zone-sub">Supports multiple files · LOA, Training Form, Dispute Record, etc.</div>
+    </div>
+    <input type="file" id="fileInput" multiple accept=".pdf" onchange="handleFiles(this.files)"/>
+    <div class="file-chips" id="fileChips"></div>
+    <div class="upload-actions" id="uploadActions" style="display:none">
+      <button class="analyze-btn" id="analyzeBtn" onclick="runAnalysis()">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <circle cx="7" cy="7" r="5.5" stroke="#fff" stroke-width="1.4"/>
+          <path d="M5 7l1.5 1.5L9 5" stroke="#fff" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Analyse Documents
+      </button>
+      <button class="clear-btn" onclick="clearFiles()">Clear all</button>
+    </div>
+  </div>
+</main>
+
+<!-- Loading overlay -->
+<div class="loading-overlay" id="loadingOverlay" style="display:none">
+  <div class="loading-box">
+    <div class="spinner"></div>
+    <div class="loading-text" id="loadingText">Extracting document text…</div>
+    <div class="loading-sub" id="loadingSub">Checking MOM regulation cache</div>
   </div>
 </div>
 
+<div class="toast" id="toast"></div>
+
 <script>
-const $ = (id) => document.getElementById(id);
-let redactedText = "";
+// ── STATE ────────────────────────────────────────────────────
+let pendingFiles = [];
+let currentSession = null;
 
-function esc(s) {
-  return (s || "").replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
-}
-function highlightRedactions(s) {
-  return esc(s).replace(/\[REDACTED_[A-Z]+\]/g, m => `<mark>${m}</mark>`);
+// ── INIT ─────────────────────────────────────────────────────
+async function init() {
+  await loadRegStatus();
+  await loadSessions();
+  setupDragDrop();
 }
 
-$("redact-btn").onclick = async () => {
-  const f = $("file").files[0];
-  if (!f) { $("upload-status").textContent = "Choose a PDF first."; return; }
-  $("redact-btn").disabled = true;
-  $("upload-status").innerHTML = '<span class="spinner"></span> Extracting & redacting in sandbox…';
+async function loadRegStatus() {
   try {
-    const fd = new FormData();
-    fd.append("file", f);
-    const r = await fetch("/redact", { method: "POST", body: fd });
-    const data = await r.json();
-    if (!r.ok) throw new Error(data.detail || "Redaction failed");
-
-    redactedText = data.redacted_text;
-    const rep = data.redaction_report || {};
-    const total = data.total_redactions || 0;
-    const chips = $("redact-chips");
-    chips.innerHTML = `<span class="chip"><strong>${total}</strong> item(s) redacted</span>` +
-      Object.entries(rep).map(([k, v]) => `<span class="chip">${k}: ${v}</span>`).join("");
-    if (total === 0) {
-      chips.innerHTML += `<span class="chip">No PII patterns matched (does not mean none present)</span>`;
+    const r = await fetch('/api/regulations');
+    const d = await r.json();
+    const dot = document.getElementById('regDot');
+    const lbl = document.getElementById('regLabel');
+    if (d.source === 'scraped') {
+      dot.className = 'reg-dot live';
+      lbl.textContent = `MOM regulations live · ${d.count} entries`;
+    } else if (d.source === 'cache') {
+      dot.className = 'reg-dot live';
+      lbl.textContent = `MOM regulations cached · ${d.count} entries`;
+    } else {
+      dot.className = 'reg-dot';
+      lbl.textContent = `MOM knowledge base · ${d.count} entries`;
     }
-    $("redacted-text").innerHTML = highlightRedactions(redactedText);
-    $("redact-card").classList.remove("hidden");
-    $("upload-status").textContent = `Extracted ${data.extracted_chars} characters.`;
-    $("redact-card").scrollIntoView({ behavior: "smooth" });
-  } catch (e) {
-    $("upload-status").innerHTML = `<span class="err">${esc(e.message)}</span>`;
-  } finally {
-    $("redact-btn").disabled = false;
+  } catch {
+    document.getElementById('regLabel').textContent = 'Regulation status unknown';
   }
-};
-
-$("cancel-btn").onclick = () => {
-  redactedText = "";
-  $("redact-card").classList.add("hidden");
-  $("results-card").classList.add("hidden");
-  $("upload-status").textContent = "Cancelled.";
-};
-
-$("confirm-btn").onclick = async () => {
-  $("confirm-btn").disabled = true;
-  $("analyze-status").innerHTML = '<span class="spinner"></span> Analyzing, checking regulations, hashing & signing…';
-  try {
-    const r = await fetch("/analyze", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ redacted_text: redactedText }),
-    });
-    const data = await r.json();
-    if (!r.ok) throw new Error(data.detail || "Analysis failed");
-    renderResults(data);
-    $("analyze-status").textContent = "";
-    $("results-card").scrollIntoView({ behavior: "smooth" });
-  } catch (e) {
-    $("analyze-status").innerHTML = `<span class="err">${esc(e.message)}</span>`;
-  } finally {
-    $("confirm-btn").disabled = false;
-  }
-};
-
-function renderResults(data) {
-  $("summary").innerHTML = `<p>${esc(data.plain_english_summary)}</p>`;
-
-  const flags = data.red_flags || [];
-  $("flags").innerHTML = flags.length === 0
-    ? `<p class="muted">No red flags identified. (This does not guarantee the contract is fair.)</p>`
-    : flags.map(f => {
-        const sev = (f.severity || "info").toLowerCase();
-        return `<div class="flag ${sev}">
-          <span class="sev ${sev}">${esc(f.severity)}</span>
-          ${f.regulation_lookup ? '<span class="chip">regulatory</span>' : ''}
-          <h4>${esc(f.issue)}</h4>
-          <div class="clause">Clause: ${esc(f.clause)}</div>
-        </div>`;
-      }).join("");
-
-  const guidance = data.regulation_guidance || [];
-  $("guidance").innerHTML = guidance.length === 0
-    ? `<p class="muted">No regulatory guidance was looked up.</p>`
-    : guidance.map(g => `
-        <div class="guidance" style="margin:10px 0;">
-          <div class="clause">For: ${esc(g.clause)}</div>
-          <div class="lbl">${esc(g.label)}</div>
-          ${(g.results || []).map(res => `
-            <div style="margin:6px 0;">
-              <a href="${esc(res.link)}" target="_blank" rel="noopener">${esc(res.title)}</a>
-              <span class="muted"> &mdash; ${esc(res.source)}</span><br>
-              <span class="muted">${esc(res.description)}</span>
-            </div>`).join("") || '<div class="muted">No results returned.</div>'}
-        </div>`).join("");
-
-  $("receipt").textContent = JSON.stringify(
-    { validation: data.validation, attestation: data.attestation }, null, 2);
-  $("results-card").classList.remove("hidden");
 }
+
+async function loadSessions() {
+  try {
+    const r = await fetch('/api/sessions');
+    const sessions = await r.json();
+    const list = document.getElementById('sessionList');
+    if (!sessions.length) {
+      list.innerHTML = '<div style="padding:8px;font-size:12px;color:var(--text-3)">No sessions yet</div>';
+      return;
+    }
+    list.innerHTML = sessions.map(s => {
+      const files = (s.filenames || []).join(', ') || 'Unknown files';
+      const date = new Date(s.created_at).toLocaleString('en-SG', {
+        month:'short', day:'numeric', hour:'2-digit', minute:'2-digit'
+      });
+      return `<div class="session-item" onclick="loadSession('${s.id}')">
+        <div class="session-date">${date}</div>
+        <div class="session-files">${files}</div>
+      </div>`;
+    }).join('');
+  } catch {}
+}
+
+async function loadSession(id) {
+  try {
+    showLoading('Loading session…', '');
+    const r = await fetch(`/api/session/${id}`);
+    const d = await r.json();
+    hideLoading();
+    renderAnalysis(d.analysis, d.filenames || []);
+  } catch(e) {
+    hideLoading();
+    showToast('Failed to load session.');
+  }
+}
+
+// ── FILES ────────────────────────────────────────────────────
+function handleFiles(files) {
+  for (const f of files) {
+    if (!pendingFiles.find(p => p.name === f.name)) {
+      pendingFiles.push(f);
+    }
+  }
+  renderChips();
+}
+
+function renderChips() {
+  const chips = document.getElementById('fileChips');
+  const actions = document.getElementById('uploadActions');
+  chips.innerHTML = pendingFiles.map((f,i) => `
+    <div class="chip">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+        <path d="M3 1h5l3 3v7H3V1z" stroke="#999" stroke-width="1" stroke-linejoin="round"/>
+      </svg>
+      ${f.name}
+      <button class="chip-remove" onclick="removeFile(${i})">×</button>
+    </div>
+  `).join('');
+  actions.style.display = pendingFiles.length ? 'flex' : 'none';
+}
+
+function removeFile(i) {
+  pendingFiles.splice(i, 1);
+  renderChips();
+}
+
+function clearFiles() {
+  pendingFiles = [];
+  renderChips();
+  document.getElementById('fileInput').value = '';
+}
+
+function newAnalysis() {
+  clearFiles();
+  document.getElementById('emptyState').style.display = '';
+  document.getElementById('analysisArea').style.display = 'none';
+  currentSession = null;
+}
+
+// ── DRAG & DROP ──────────────────────────────────────────────
+function setupDragDrop() {
+  const zone = document.getElementById('dropZone');
+  zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+  zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+  zone.addEventListener('drop', e => {
+    e.preventDefault();
+    zone.classList.remove('drag-over');
+    handleFiles(e.dataTransfer.files);
+  });
+}
+
+// ── ANALYSIS ─────────────────────────────────────────────────
+async function runAnalysis() {
+  if (!pendingFiles.length) return;
+  const btn = document.getElementById('analyzeBtn');
+  btn.disabled = true;
+
+  const steps = [
+    ['Extracting text from PDFs…', 'Reading document structure'],
+    ['Loading MOM regulation database…', 'Checking cache validity'],
+    ['Running employment law analysis…', 'Identifying red flags & malpractice'],
+    ['Generating MOM report draft…', 'Finalising recommendations'],
+  ];
+  let stepIdx = 0;
+  showLoading(steps[0][0], steps[0][1]);
+  const stepTimer = setInterval(() => {
+    stepIdx = (stepIdx + 1) % steps.length;
+    document.getElementById('loadingText').textContent = steps[stepIdx][0];
+    document.getElementById('loadingSub').textContent = steps[stepIdx][1];
+  }, 2800);
+
+  try {
+    const form = new FormData();
+    for (const f of pendingFiles) form.append('files', f);
+
+    const r = await fetch('/api/analyze', { method: 'POST', body: form });
+    clearInterval(stepTimer);
+
+    if (!r.ok) {
+      const err = await r.json().catch(() => ({}));
+      hideLoading();
+      btn.disabled = false;
+      showToast(err.detail?.message || err.detail || 'Analysis failed.');
+      return;
+    }
+
+    const data = await r.json();
+    hideLoading();
+    btn.disabled = false;
+    clearFiles();
+    renderAnalysis(data.analysis, pendingFiles.map(f=>f.name));
+    await loadSessions();
+  } catch(e) {
+    clearInterval(stepTimer);
+    hideLoading();
+    btn.disabled = false;
+    showToast('Network error. Is the backend running?');
+  }
+}
+
+// ── RENDER ───────────────────────────────────────────────────
+function sevColor(s) {
+  return ({CRITICAL:'var(--red)',SERIOUS:'var(--orange)',
+            MODERATE:'var(--yellow)',INFORMATIONAL:'var(--blue)'})[s] || 'var(--text-3)';
+}
+function sevPillClass(s) {
+  return ({CRITICAL:'pill-critical',SERIOUS:'pill-serious',
+            MODERATE:'pill-moderate',INFORMATIONAL:'pill-informational'})[s] || '';
+}
+function strengthClass(s) {
+  return ({strong:'strength-strong',moderate:'strength-moderate',weak:'strength-weak'})[s]||'';
+}
+function esc(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function renderAnalysis(a, filenames) {
+  document.getElementById('emptyState').style.display = 'none';
+  const area = document.getElementById('analysisArea');
+  area.style.display = '';
+
+  const sev = a.overall_severity || 'MODERATE';
+  const sevClass = `sev-${sev.toLowerCase()}`;
+
+  let html = '';
+
+  // ── 1. EXECUTIVE SUMMARY ────────────────────────────────────
+  html += `<div class="msg">
+    <div class="msg-header">
+      <div class="msg-icon">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <circle cx="7" cy="7" r="5.5" stroke="#d97706" stroke-width="1.4"/>
+          <path d="M7 4.5v3.5M7 9.5v.5" stroke="#d97706" stroke-width="1.4" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <span>ClauseGuard Analysis</span>
+    </div>
+    <div class="severity-banner ${sevClass}">
+      <span class="sev-pill ${sevPillClass(sev)}">${sev}</span>
+      <div class="severity-text">${esc(a.executive_summary)}</div>
+    </div>
+  </div>`;
+
+  // ── 2. DOCUMENTS ─────────────────────────────────────────────
+  if (a.documents_analyzed?.length) {
+    html += `<div class="msg"><div class="section-h">Documents Analysed</div>
+    <div class="doc-cards">`;
+    for (const d of a.documents_analyzed) {
+      const empSigned = d.signed_by_employee;
+      const empLabel = empSigned === true ? 'Signed' : empSigned === false ? 'NOT Signed by Employee' : 'Unknown';
+      const empClass = empSigned === true ? 'signed-yes' : empSigned === false ? 'signed-no' : 'signed-partial';
+      const empSig = d.signed_by_employer;
+      const empSigLabel = empSig === true ? '✓ Employer signed' : empSig === false ? '⚠ Employer NOT signed' : '';
+      html += `<div class="doc-card">
+        <div class="doc-card-header">
+          <div class="doc-name">${esc(d.filename)}</div>
+          <span class="doc-signed ${empClass}">${empLabel}</span>
+        </div>
+        ${empSigLabel ? `<div style="font-size:11px;color:var(--text-3);margin-bottom:6px">${esc(empSigLabel)}</div>` : ''}
+        <ul class="doc-facts">${(d.key_facts||[]).map(f=>`<li>${esc(f)}</li>`).join('')}</ul>
+      </div>`;
+    }
+    html += `</div></div>`;
+  }
+
+  // ── 3. RED FLAGS ─────────────────────────────────────────────
+  if (a.red_flags?.length) {
+    html += `<div class="msg"><div class="section-h">Red Flags Identified (${a.red_flags.length})</div>
+    <div class="flag-list" id="flagList">`;
+    for (const f of a.red_flags) {
+      const sClass = `sev-${f.severity}`;
+      html += `<div class="flag-card ${sClass}" id="flag-${f.id}">
+        <div class="flag-header" onclick="toggleFlag(${f.id})">
+          <div class="flag-num">#${f.id}</div>
+          <div class="flag-title">${esc(f.title)}</div>
+          <span class="sev-pill ${sevPillClass(f.severity)}">${f.severity}</span>
+          <span class="flag-chevron">▾</span>
+        </div>
+        <div class="flag-body">
+          <div class="flag-row">
+            <div class="flag-label">Document</div>
+            <div class="flag-value">${esc(f.document)} ${f.clause_or_section ? '· '+esc(f.clause_or_section):''}</div>
+          </div>
+          <div class="flag-row">
+            <div class="flag-label">Issue</div>
+            <div class="flag-value">${esc(f.issue)}</div>
+          </div>
+          <div class="flag-row">
+            <div class="flag-label">Employee Impact</div>
+            <div class="flag-value">${esc(f.employee_impact)}</div>
+          </div>
+          ${f.evidence_quote ? `<div class="flag-quote">"${esc(f.evidence_quote)}"</div>` : ''}
+          ${f.mom_regulation ? `<div class="flag-mom" style="margin-top:10px">⚖ MOM: ${esc(f.mom_regulation)}</div>` : ''}
+        </div>
+      </div>`;
+    }
+    html += `</div></div>`;
+  }
+
+  // ── 4. LEGAL ARGUMENTS ───────────────────────────────────────
+  if (a.legal_arguments?.length) {
+    html += `<div class="msg"><div class="section-h">Legal Arguments</div>
+    <div class="arg-list">`;
+    for (const arg of a.legal_arguments) {
+      html += `<div class="arg-item">
+        <div class="arg-header">
+          <span class="arg-strength ${strengthClass(arg.strength)}">${(arg.strength||'').toUpperCase()}</span>
+        </div>
+        <div class="arg-text">${esc(arg.argument)}</div>
+        ${arg.evidence ? `<div class="arg-evidence">Evidence: ${esc(arg.evidence)}</div>` : ''}
+      </div>`;
+    }
+    html += `</div></div>`;
+  }
+
+  // ── 5. RECOMMENDED ACTIONS ───────────────────────────────────
+  if (a.recommended_actions?.length) {
+    html += `<div class="msg"><div class="section-h">Recommended Actions</div>
+    <div class="action-list">`;
+    for (const act of a.recommended_actions) {
+      html += `<div class="action-item">
+        <div class="action-num">${act.priority}</div>
+        <div class="action-body">
+          <div class="action-title">${esc(act.action)}</div>
+          ${act.notes ? `<div style="font-size:12px;color:var(--text-2);margin-top:4px">${esc(act.notes)}</div>` : ''}
+          <div class="action-meta">
+            ${act.channel ? `<span class="tag tag-channel">${esc(act.channel)}</span>` : ''}
+            ${act.urgency ? `<span class="tag">${esc(act.urgency)}</span>` : ''}
+          </div>
+        </div>
+      </div>`;
+    }
+    html += `</div></div>`;
+  }
+
+  // ── 6. EXIT CHECKLIST ────────────────────────────────────────
+  if (a.exit_checklist?.length) {
+    html += `<div class="msg"><div class="section-h">Exit Documentation Checklist</div>
+    <div class="checklist">`;
+    for (const item of a.exit_checklist) {
+      const icon = item.status === 'Obtained' ? '✅' : item.status === 'Not Applicable' ? '○' : '□';
+      html += `<div class="check-item">
+        <div class="check-icon">${icon}</div>
+        <div class="check-body">
+          <div class="check-title">${esc(item.item)}</div>
+          ${item.reason ? `<div class="check-reason">${esc(item.reason)}</div>` : ''}
+        </div>
+      </div>`;
+    }
+    html += `</div></div>`;
+  }
+
+  // ── 7. MOM DRAFT ─────────────────────────────────────────────
+  if (a.mom_report_draft) {
+    const draft = a.mom_report_draft;
+    const fullDraft = `To: ${draft.to||'MOM Contact Centre'}\nSubject: ${draft.subject||''}\n\n${draft.body||''}`;
+    html += `<div class="msg">
+      <div class="section-h">MOM / TADM Report Draft</div>
+      <div class="draft-box">
+        <div class="draft-header">
+          <span class="draft-title">Draft — Edit before sending</span>
+          <button class="copy-btn" onclick="copyDraft(this,'${encodeURIComponent(fullDraft)}')">Copy Draft</button>
+        </div>
+        <div class="draft-to">To: ${esc(draft.to || 'MOM Contact Centre / TADM')}</div>
+        <div class="draft-subject">Subject: ${esc(draft.subject)}</div>
+        <div class="draft-body">${esc(draft.body)}</div>
+      </div>
+    </div>`;
+  }
+
+  // ── DISCLAIMER ───────────────────────────────────────────────
+  html += `<div class="disclaimer">
+    ${esc(a.disclaimer || 'This analysis is for informational purposes only and does not constitute legal advice.')}
+    · For legal advice, contact <a href="https://probono.sg" target="_blank" style="color:var(--accent)">Law Society Pro Bono</a>
+    · <a href="https://www.mom.gov.sg" target="_blank" style="color:var(--accent)">MOM</a>
+    · <a href="https://www.tadm.sg" target="_blank" style="color:var(--accent)">TADM</a>
+  </div>`;
+
+  area.innerHTML = html;
+  area.scrollTop = 0;
+
+  // Auto-open first critical flag
+  const firstCritical = a.red_flags?.find(f=>f.severity==='CRITICAL');
+  if (firstCritical) toggleFlag(firstCritical.id);
+}
+
+function toggleFlag(id) {
+  const el = document.getElementById(`flag-${id}`);
+  if (el) el.classList.toggle('open');
+}
+
+function copyDraft(btn, encoded) {
+  const text = decodeURIComponent(encoded);
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy Draft', 2000);
+  });
+}
+
+// ── UI HELPERS ───────────────────────────────────────────────
+function showLoading(text, sub) {
+  document.getElementById('loadingText').textContent = text;
+  document.getElementById('loadingSub').textContent = sub;
+  document.getElementById('loadingOverlay').style.display = 'flex';
+}
+function hideLoading() {
+  document.getElementById('loadingOverlay').style.display = 'none';
+}
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+init();
 </script>
 </body>
 </html>
