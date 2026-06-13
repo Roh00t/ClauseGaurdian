@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>ClauseGuard</title>
+<style>
+  :root {
+    --serious: #c0322b; --serious-bg: #fdecea;
+    --moderate: #b26a00; --moderate-bg: #fff4e0;
+    --info: #1565c0; --info-bg: #e8f1fb;
+    --ink: #1d2329; --muted: #5b6770; --line: #e2e6ea; --bg: #f6f8fa;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    color: var(--ink); background: var(--bg); margin: 0; line-height: 1.5;
+  }
+  .wrap { max-width: 820px; margin: 0 auto; padding: 24px 18px 80px; }
+  h1 { margin: 0 0 2px; font-size: 26px; }
+  .tag { color: var(--muted); margin: 0 0 18px; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 10px;
+          padding: 18px; margin: 14px 0; }
+  .disclaimer { background: #fff8e1; border: 1px solid #f0d98c; border-radius: 8px;
+                padding: 12px 14px; font-size: 13.5px; }
+  .notice { font-size: 13.5px; color: #4a3c00; background: #fffdf5;
+            border: 1px dashed #e0c97a; border-radius: 8px; padding: 12px 14px; margin: 12px 0; }
+  button { font: inherit; background: var(--ink); color: #fff; border: 0;
+           border-radius: 7px; padding: 9px 16px; cursor: pointer; }
+  button.secondary { background: #fff; color: var(--ink); border: 1px solid var(--line); }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  input[type=file] { font: inherit; }
+  .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  pre.redacted { white-space: pre-wrap; word-break: break-word; background: var(--bg);
+                 border: 1px solid var(--line); border-radius: 8px; padding: 12px;
+                 max-height: 320px; overflow: auto; font-size: 13px; }
+  mark { background: #ffe08a; color: #6b4e00; padding: 0 3px; border-radius: 3px;
+         font-weight: 600; }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0; }
+  .chip { font-size: 12.5px; padding: 3px 10px; border-radius: 20px; border: 1px solid var(--line); }
+  .flag { border-left: 5px solid var(--line); border-radius: 8px; padding: 12px 14px;
+          margin: 10px 0; background: #fff; border-top: 1px solid var(--line);
+          border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .flag.serious  { border-left-color: var(--serious);  background: var(--serious-bg); }
+  .flag.moderate { border-left-color: var(--moderate); background: var(--moderate-bg); }
+  .flag.info     { border-left-color: var(--info);     background: var(--info-bg); }
+  .sev { display: inline-block; font-size: 11.5px; font-weight: 700; text-transform: uppercase;
+         letter-spacing: .04em; padding: 2px 8px; border-radius: 4px; color: #fff; }
+  .sev.serious { background: var(--serious); } .sev.moderate { background: var(--moderate); }
+  .sev.info { background: var(--info); }
+  .flag h4 { margin: 8px 0 4px; font-size: 15px; }
+  .flag .clause { font-size: 12.5px; color: var(--muted); font-style: italic; }
+  .guidance { font-size: 13px; }
+  .guidance a { color: var(--info); }
+  .guidance .lbl { color: var(--muted); font-size: 12px; font-style: italic; }
+  .receipt { font-family: ui-monospace, Menlo, monospace; font-size: 12px;
+             background: #0f1720; color: #cfe3f5; border-radius: 8px; padding: 14px;
+             white-space: pre-wrap; word-break: break-all; }
+  .err { color: var(--serious); background: var(--serious-bg); border: 1px solid #f3b9b4;
+         border-radius: 8px; padding: 12px 14px; }
+  .muted { color: var(--muted); font-size: 13px; }
+  .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid #ccc;
+             border-top-color: var(--ink); border-radius: 50%; animation: spin .8s linear infinite;
+             vertical-align: middle; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>ClauseGuard</h1>
+  <p class="tag">Upload an employment contract &rarr; plain-English summary, red flags, live guidance, and a tamper-evident signed receipt.</p>
+
+  <div class="disclaimer" id="disclaimer">
+    <strong>Not legal advice, not exhaustive.</strong> A &ldquo;no red flags found&rdquo; result does
+    not guarantee a contract is fair. Singapore employment contracts (MVP scope). Highlights clauses
+    worth discussing with HR or a free legal advisor (e.g. probono.sg).
+  </div>
+
+  <!-- STEP 1: UPLOAD -->
+  <div class="card" id="upload-card">
+    <h3>1. Upload</h3>
+    <div class="notice">
+      You can upload a real contract or use the demo contract. Automated redaction below is
+      <strong>best-effort</strong> (catches NRIC numbers, emails, phone numbers, common address
+      patterns) and is <strong>NOT guaranteed complete</strong> &mdash; it will not catch names in
+      prose, signatures, or other identifying context. Do not upload a document containing
+      information you would not want processed by a third-party AI service even after this
+      redaction step.
+    </div>
+    <div class="row">
+      <input type="file" id="file" accept="application/pdf" />
+      <button id="redact-btn">Extract &amp; Redact</button>
+    </div>
+    <p class="muted" id="upload-status"></p>
+  </div>
+
+  <!-- STEP 2: REDACTION CONFIRMATION -->
+  <div class="card hidden" id="redact-card">
+    <h3>2. Review redaction &mdash; nothing has left your machine yet</h3>
+    <p class="muted">These items were redacted <em>before</em> any text is sent to the AI model.
+       Review below, then confirm to proceed. Highlighted <mark>[REDACTED_*]</mark> tokens replace the original values.</p>
+    <div class="chips" id="redact-chips"></div>
+    <pre class="redacted" id="redacted-text"></pre>
+    <div class="row">
+      <button id="confirm-btn">Confirm &amp; Analyze</button>
+      <button class="secondary" id="cancel-btn">Cancel</button>
+    </div>
+    <p class="muted" id="analyze-status"></p>
+  </div>
+
+  <!-- STEP 3: RESULTS -->
+  <div class="card hidden" id="results-card">
+    <h3>3. Analysis</h3>
+    <div id="summary"></div>
+    <h4>Red flags</h4>
+    <div id="flags"></div>
+    <h4>Related regulatory guidance</h4>
+    <p class="muted">Labelled <em>related guidance &mdash; verify relevance</em>. These are live web
+       search results, <strong>not proof</strong> and not legal authority.</p>
+    <div id="guidance"></div>
+    <h4>Attestation receipt</h4>
+    <p class="muted">This signature proves the report is <strong>UNALTERED</strong> since signing.
+       It does <strong>not</strong> prove the analysis is correct.</p>
+    <div class="receipt" id="receipt"></div>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let redactedText = "";
+
+function esc(s) {
+  return (s || "").replace(/[&<>]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]));
+}
+function highlightRedactions(s) {
+  return esc(s).replace(/\[REDACTED_[A-Z]+\]/g, m => `<mark>${m}</mark>`);
+}
+
+$("redact-btn").onclick = async () => {
+  const f = $("file").files[0];
+  if (!f) { $("upload-status").textContent = "Choose a PDF first."; return; }
+  $("redact-btn").disabled = true;
+  $("upload-status").innerHTML = '<span class="spinner"></span> Extracting & redacting in sandbox…';
+  try {
+    const fd = new FormData();
+    fd.append("file", f);
+    const r = await fetch("/redact", { method: "POST", body: fd });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.detail || "Redaction failed");
+
+    redactedText = data.redacted_text;
+    const rep = data.redaction_report || {};
+    const total = data.total_redactions || 0;
+    const chips = $("redact-chips");
+    chips.innerHTML = `<span class="chip"><strong>${total}</strong> item(s) redacted</span>` +
+      Object.entries(rep).map(([k, v]) => `<span class="chip">${k}: ${v}</span>`).join("");
+    if (total === 0) {
+      chips.innerHTML += `<span class="chip">No PII patterns matched (does not mean none present)</span>`;
+    }
+    $("redacted-text").innerHTML = highlightRedactions(redactedText);
+    $("redact-card").classList.remove("hidden");
+    $("upload-status").textContent = `Extracted ${data.extracted_chars} characters.`;
+    $("redact-card").scrollIntoView({ behavior: "smooth" });
+  } catch (e) {
+    $("upload-status").innerHTML = `<span class="err">${esc(e.message)}</span>`;
+  } finally {
+    $("redact-btn").disabled = false;
+  }
+};
+
+$("cancel-btn").onclick = () => {
+  redactedText = "";
+  $("redact-card").classList.add("hidden");
+  $("results-card").classList.add("hidden");
+  $("upload-status").textContent = "Cancelled.";
+};
+
+$("confirm-btn").onclick = async () => {
+  $("confirm-btn").disabled = true;
+  $("analyze-status").innerHTML = '<span class="spinner"></span> Analyzing, checking regulations, hashing & signing…';
+  try {
+    const r = await fetch("/analyze", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ redacted_text: redactedText }),
+    });
+    const data = await r.json();
+    if (!r.ok) throw new Error(data.detail || "Analysis failed");
+    renderResults(data);
+    $("analyze-status").textContent = "";
+    $("results-card").scrollIntoView({ behavior: "smooth" });
+  } catch (e) {
+    $("analyze-status").innerHTML = `<span class="err">${esc(e.message)}</span>`;
+  } finally {
+    $("confirm-btn").disabled = false;
+  }
+};
+
+function renderResults(data) {
+  $("summary").innerHTML = `<p>${esc(data.plain_english_summary)}</p>`;
+
+  const flags = data.red_flags || [];
+  $("flags").innerHTML = flags.length === 0
+    ? `<p class="muted">No red flags identified. (This does not guarantee the contract is fair.)</p>`
+    : flags.map(f => {
+        const sev = (f.severity || "info").toLowerCase();
+        return `<div class="flag ${sev}">
+          <span class="sev ${sev}">${esc(f.severity)}</span>
+          ${f.regulation_lookup ? '<span class="chip">regulatory</span>' : ''}
+          <h4>${esc(f.issue)}</h4>
+          <div class="clause">Clause: ${esc(f.clause)}</div>
+        </div>`;
+      }).join("");
+
+  const guidance = data.regulation_guidance || [];
+  $("guidance").innerHTML = guidance.length === 0
+    ? `<p class="muted">No regulatory guidance was looked up.</p>`
+    : guidance.map(g => `
+        <div class="guidance" style="margin:10px 0;">
+          <div class="clause">For: ${esc(g.clause)}</div>
+          <div class="lbl">${esc(g.label)}</div>
+          ${(g.results || []).map(res => `
+            <div style="margin:6px 0;">
+              <a href="${esc(res.link)}" target="_blank" rel="noopener">${esc(res.title)}</a>
+              <span class="muted"> &mdash; ${esc(res.source)}</span><br>
+              <span class="muted">${esc(res.description)}</span>
+            </div>`).join("") || '<div class="muted">No results returned.</div>'}
+        </div>`).join("");
+
+  $("receipt").textContent = JSON.stringify(
+    { validation: data.validation, attestation: data.attestation }, null, 2);
+  $("results-card").classList.remove("hidden");
+}
+</script>
+</body>
+</html>
