@@ -192,3 +192,166 @@ context; reload repopulated the chat; "Clear my data" wiped it. Debug log added 
 - **Browser caches index.html** — during MCP testing I had to cache-bust with a ?v= query
   param to pick up new frontend code. Real users get fresh HTML on a normal load; only an
   issue for rapid dev iteration. (Could add Cache-Control headers later if desired.)
+
+  ## PHASE 2 STRESS TEST — Part B Browser Tests (2026-06-15): COMPLETE
+
+All browser tests passed via Chrome MCP:
+
+| Test | Result | Notes |
+|---|---|---|
+| 1 Navigation & empty state | ✅ 7/7 | No console errors; logo, panels, dynamic reg count, footer notice, dark bg |
+| 2 File upload flow | ✅ | Chip + ×, Analyse en/disables, Panel B note grey→green |
+| 3 Full analysis | ✅ | Loading overlay, all sections render, card expands, sidebar title |
+| 4 Error handling | ✅ 3/3 | Human-readable error, app usable after |
+| 5 Dual panel judgment | ✅ 4/4 | INSUFFICIENT→EMPLOYER_AT_FAULT green, above flags, sidebar label |
+| 7 Redaction banner | ✅ 4/4 | Entity type counts, no values, collapsible |
+| 11 IndexedDB persistence | ✅ 7/7 | Survives hard refresh, second tab |
+| 12 Clear my data | ✅ 6/6 | Confirm dialog, Cancel keeps, Confirm empties, IDB count 0 |
+| 13 Private browsing | ⚠️ 13.1 ✅ | Footer notice OK; 13.2-13.5 not MCP-automatable (incognito) |
+
+P0s: none. P1s (test-harness only): clipboard read blocked by browser permission (Copy
+click executes without error; MCP can't verify content). Incognito tests need manual run.
+
+## PHASE 3 STRESS TEST — Part B (2026-06-15, pending manual run)
+
+Chat functionality verified end-to-end via Chrome MCP during development.
+Formal Part B stress test for Phase 3 (chat input, char counter, scope note,
+redaction verification, session reload) pending — to be added to STRESS_TEST.md
+in a future session.
+
+## PHASE 4 — Downloadable DOCX Report (2026-06-15, in progress)
+
+`POST /api/download` endpoint — client sends reversed entity map (placeholder→real)
++ analysis JSON. Server de-redacts all fields via `_deRedact()` and generates a
+`python-docx` DOCX containing: header (timestamp, filenames analysed), judgment
+(if present), executive summary, red flags table, recommended actions, de-redacted
+MOM/TADM letter, Terminal 3 attestation receipt. Streams back as `.docx` download.
+Server stores nothing (guardrail #3). "Download Report" button appears in UI after
+analysis completes.
+
+### Architecture
+- `backend/main.py` — `POST /api/download` + `_generate_docx()` + `_deRedact()`
+- `frontend/index.html` — "Download Report ⬇" button, reads entity_map from
+  IndexedDB session, inverts it (real→placeholder becomes placeholder→real),
+  POSTs to /api/download, triggers browser file save
+
+### Terminal 3 Signing — Decision Point
+Current HMAC signing is **symmetric**: verification requires ClauseGuard's own
+`TERMINAL3_API_KEY`. A third party (TADM officer, lawyer) cannot independently
+verify the signature without that secret. The DOCX attestation section notes this
+explicitly: "Signature method: HMAC-SHA256 (symmetric, requires ClauseGuard's
+signing key to verify)."
+
+Terminal 3's asymmetric DID-based signing (`did:t3n:f9914f8d1d403a7443550cae6808b9261bf68177`)
+would allow independent verification — deferred to Phase 5 pending review of
+Terminal 3 SDK support for asymmetric operations.
+
+### P1 notes (to be updated on completion)
+- Zero placeholder tokens in DOCX must be verified post-generation:
+  `python3.13 -c "from docx import Document; doc = Document('report.docx'); ..."`
+- DOCX only for MVP — PDF export (libreoffice headless) deferred
+- "Download Report" button should only appear when verdict is not
+  INSUFFICIENT_INFORMATION (no MOM letter exists for that case)
+- De-redaction at download time requires session's entity_map to still be
+  in IndexedDB — not available if user cleared their data
+## PHASE 4 — Downloadable DOCX Report — COMPLETE (2026-06-15)
+
+"Download Report (.docx)" button (topbar, shown after analysis). POST /api/download →
+`backend/report_generator.py` (python-docx). Client sends the FULL analyze response +
+reversed entity map (placeholder→real); server de-redacts every field, builds the DOCX
+(header+SHA-256 hash, dispute judgment, executive summary, red-flags table [capped 20],
+recommended actions, MOM/TADM letter, attestation receipt, footer), streams it back, and
+persists nothing (guardrail #3). Attestation copy states the signature is HMAC (symmetric)
+— honest per guardrail #6.
+
+Verified end-to-end (Chrome MCP, real analysis on synthetic_contract.pdf): button appears
+after analysis, real click saved a 40KB DOCX to ~/Downloads, opened it → all sections
+present, **zero placeholder tokens**, real names de-redacted (Alex Tan, Acme), report hash
+present. No P0s.
+
+### Important correction made during build (data-shape mismatch)
+The Notion task's `_generate_docx` assumed a FLAT analysis object, but the client sends the
+NESTED full response (analysis under `["analysis"]`; judgment/attestation siblings) and
+`mom_report_draft`/`recommended_actions` are dicts/list-of-dicts (the task's `letter.split`
+and `str(action)` would crash/garble). Rewrote the generator for the real shape with correct
+field names (`issue`/`clause_or_section`/`verdict_reasoning`), dict-aware MOM letter, and
+formatted actions. This is the pre-mortem's exact failure mode — averted.
+
+### P1 notes
+- **python-docx dependency added** (was already installed on python3.13; pip if missing).
+- **Frontend uses an in-memory `currentReport`** (set on fresh analysis + session reload),
+  NOT the task's `getSession(currentSessionId)` — there is no `currentSessionId` tracked in
+  the codebase. Works for both paths; no IndexedDB round-trip.
+- **Test artifact:** a synthetic-data DOCX was left in ~/Downloads during verification
+  (`ClauseGuard_Report_2026-06-15.docx`) — harmless (no real PII), can be deleted.
+## PHASE 4 — Downloadable DOCX Report — COMPLETE (2026-06-15)
+
+`backend/report_generator.py` (python-docx) + `POST /api/download`. Client
+sends full nested analyze response + reversed entity map (placeholder→real).
+Server de-redacts via `_deRedact()`, generates DOCX:
+header+timestamp+report_hash, judgment (if not INSUFFICIENT), executive
+summary, red flags table (severity/issue/clause), recommended actions,
+de-redacted MOM letter, Terminal 3 attestation receipt with HMAC-symmetric
+honesty note. Streams back as `.docx`, stores nothing (guardrail #3).
+Frontend: "Download Report ⬇" button in topbar, appears on fresh analysis
+and session reload, hidden on New Analysis. Uses in-memory `currentReport`
+(no server round-trip).
+
+Verified: real 40KB DOCX downloaded, opened — zero placeholder tokens,
+real names substituted (Alex Tan, Acme Staffing Pte Ltd), all sections
+present, report hash matches attestation section.
+
+### Critical deviation caught and fixed during build
+The Phase 4 prompt's `_generate_docx` assumed a FLAT analysis object.
+The actual response is NESTED (`session.analysis` = full API response with
+`.analysis`, `.judgment`, `.attestation`, `.entity_map` as siblings).
+Field names also differed: `flag.description` → `flag.issue`,
+`judgment.reasoning` → `judgment.verdict_reasoning`,
+`mom_report_draft` → a dict `{subject, to, body}` not a string.
+Rewritten to match real schema — this was the pre-mortem's exact failure mode
+(placeholder-filled DOCX submitted to TADM) averted.
+
+### P1 notes
+- `python-docx` dependency (new). Not in original requirements.
+- Frontend uses in-memory `currentReport` (no `currentSessionId` tracked
+  in codebase) — deviation from brief flagged.
+- DOCX only for MVP. PDF export (libreoffice headless) deferred.
+- Download button shows even for INSUFFICIENT_INFORMATION verdict (no MOM
+  letter in that case — DOCX generates but MOM section is empty).
+
+### Terminal 3 signing decision
+HMAC (symmetric) retained for now — anyone wishing to verify the attestation
+independently requires ClauseGuard's TERMINAL3_API_KEY. Asymmetric DID-based
+signing (`did:t3n:f9914f8d1d403a7443550cae6808b9261bf68177`) investigated:
+Terminal 3 docs reference DID signing but SDK support for asymmetric operations
+was not confirmed in this session. Deferred to Phase 6.
+
+## PHASE 5 — Production Readiness (2026-06-15, in progress)
+
+### Architecture
+- `frontend/tos.html` — Privacy Policy + ToS at `/tos`. Key wording:
+  "processes per-request, retains nothing" (NOT "we never see your data").
+- `backend/main.py` — hybrid rate limiting: 20/min per-IP (raised from 5)
+  + 5/min per-session-token via `X-Session-Token` header. Both required
+  because per-IP is too restrictive for NAT, per-token alone is bypassable
+  via new UUID generation.
+- `frontend/index.html` — thumbs up/down per red flag. Stored in IndexedDB
+  `feedback` field alongside session. No server writes (guardrail #3).
+- `frontend/index.html` — ARIA live regions on results, loading, toasts.
+  Tab order verified. Mobile 375px viewport checked.
+- `frontend/i18n.js` — EN/MS/TL translations for UI copy only (disclaimer,
+  redaction banner, MOM letter preamble/sign-off, privacy link). Analysis
+  output stays English. Tagalog has stronger disclaimer than EN/MS: "not a
+  legal translation — verify all legal references before submitting."
+
+### P1 notes (to be updated on completion)
+- Rate limiting per-session-token still bypassable if attacker generates
+  a new UUID per request and rotates fast enough to stay under per-IP limit
+- Feedback has no aggregate signal (client-side only) — opt-in share is
+  a future feature requiring explicit user consent flow
+- Colour contrast on severity badges not yet WCAG-AA verified
+- Multi-language covers UI copy only — red flags and AI analysis outputs
+  remain English; full analysis translation requires separate LLM calls
+  with quality-unknown translations (Phase 6 consideration)
+- ToS is AI-generated content, not reviewed by a lawyer — add a note
+  "for informational purposes, not legal advice" to the ToS page itself

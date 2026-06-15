@@ -657,6 +657,10 @@ body{
     <div>
       <div class="topbar-title">Your virtual employment-rights officer</div>
     </div>
+    <button id="download-report-btn" title="Download a DOCX evidence pack of this analysis"
+      style="display:none;margin-left:auto;margin-right:14px;padding:7px 14px;background:var(--accent);color:#fff;border:none;border-radius:var(--radius-sm);font:600 12px var(--font);cursor:pointer">
+      ⬇ Download Report (.docx)
+    </button>
     <div class="reg-status" id="regStatus">
       <div class="reg-dot" id="regDot"></div>
       <span id="regLabel">Checking MOM regulations…</span>
@@ -776,6 +780,7 @@ body{
 let contractFiles = [];   // Panel A — employment documents
 let contextFiles = [];    // Panel B — dispute context
 let currentSession = null;
+let currentReport = null;   // Phase 4: holds the currently-displayed analysis for DOCX download
 
 // ── INIT ─────────────────────────────────────────────────────
 async function init() {
@@ -785,6 +790,53 @@ async function init() {
   setupDragDrop();
   setupClearData();
   setupChatCounter();
+  setupDownload();
+}
+
+// ── PHASE 4: DOWNLOAD REPORT (.docx) ─────────────────────────
+function showDownloadButton() {
+  const b = document.getElementById('download-report-btn');
+  if (b) b.style.display = 'block';
+}
+
+function setupDownload() {
+  const btn = document.getElementById('download-report-btn');
+  if (!btn) return;
+  btn.addEventListener('click', async () => {
+    if (!currentReport || !currentReport.analysis) { showToast('Run an analysis first.'); return; }
+    // entity_map is stored {real -> placeholder}; invert to {placeholder -> real}
+    // for de-redaction. This map stays in the browser and is sent only to our own
+    // /api/download, which streams the file back and persists nothing.
+    const rawMap = currentReport.analysis.entity_map || {};
+    const entityMapReversed = Object.fromEntries(
+      Object.entries(rawMap).map(([real, placeholder]) => [placeholder, real])
+    );
+    const prev = btn.textContent;
+    btn.disabled = true; btn.textContent = '⏳ Generating…';
+    try {
+      const resp = await fetch('/api/download', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          analysis: currentReport.analysis,
+          entity_map_reversed: entityMapReversed,
+          filenames: currentReport.filenames || [],
+        }),
+      });
+      if (!resp.ok) { showToast('Download failed — please try again.'); return; }
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `ClauseGuard_Report_${new Date().toISOString().slice(0, 10)}.docx`;
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      showToast('Download failed — network error.');
+    } finally {
+      btn.disabled = false; btn.textContent = prev;
+    }
+  });
 }
 
 // Phase 3: live char counter for the chat context box (2000-char cap).
@@ -916,6 +968,12 @@ async function loadSession(id) {
       document.getElementById('chat-char-count').textContent =
         `${(session.chat_context || '').length} / 2000`;
     }
+    // Phase 4: enable download for the reloaded session.
+    currentReport = {
+      analysis: session.analysis,
+      filenames: (session.contract_filenames || []).concat(session.context_filenames || []),
+    };
+    showDownloadButton();
   } catch(e) {
     hideLoading();
     showToast('Failed to load session from browser storage.');
@@ -988,6 +1046,9 @@ function newAnalysis() {
   document.getElementById('emptyState').style.display = '';
   document.getElementById('analysisArea').style.display = 'none';
   currentSession = null;
+  currentReport = null;
+  const dl = document.getElementById('download-report-btn');
+  if (dl) dl.style.display = 'none';
 }
 
 // ── DRAG & DROP ──────────────────────────────────────────────
@@ -1059,6 +1120,10 @@ async function runAnalysis() {
       redaction_reports: data.redaction_reports, attestation: data.attestation,
       entity_map: data.entity_map, entity_counts: data.entity_counts },
       contractNames, contextNames);
+
+    // Phase 4: remember the full response for DOCX download (in-memory, no IDB round-trip).
+    currentReport = { analysis: data, filenames: contractNames.concat(contextNames) };
+    showDownloadButton();
 
     // Phase 2: persist this analysis to the browser's IndexedDB (NOT the server).
     const verdict = data.judgment?.verdict || null;

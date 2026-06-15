@@ -16,7 +16,7 @@ import os
 import sys
 import json
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 # Make `backend` importable when uvicorn is launched from the repo root.
@@ -41,6 +41,7 @@ from backend.extractor import extract_text, extract_context_text
 from backend.redaction import redact_documents
 from backend.entity_map import build_entity_map, apply_entity_map
 from backend.analyzer import analyze_combined
+from backend.report_generator import generate_docx
 from src.terminal3_signer import sign_report_hash
 from backend.security import (
     validate_file, MAX_FILES, MAX_TOTAL_SIZE_BYTES, MAX_FILE_SIZE_BYTES,
@@ -283,6 +284,38 @@ async def analyze(
         "analysis": analysis,
         "judgment": judgment,
     }
+
+
+# ── Download report (Phase 4) ────────────────────────────────────────────────
+@app.post("/api/download")
+async def download_report(request: Request):
+    """Generate a DOCX evidence pack from a completed analysis. Stateless:
+    the client sends the analysis JSON + reversed entity map (placeholder->real);
+    we de-redact, build the DOCX, stream it back, and store NOTHING (guardrail #3).
+    """
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(400, "Invalid JSON body.")
+
+    report = body.get("analysis") or {}            # the full /api/analyze response
+    emap_reversed = body.get("entity_map_reversed") or {}  # placeholder -> real
+    filenames = body.get("filenames") or []
+    if not report:
+        raise HTTPException(400, "No analysis provided to render.")
+
+    generated_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    try:
+        docx_bytes = generate_docx(report, emap_reversed, filenames, generated_at)
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(500, detail=f"Report generation failed: {e}")
+
+    filename = f"ClauseGuard_Report_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M')}.docx"
+    return Response(
+        content=docx_bytes,
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 # ── Sessions (DEPRECATED — Phase 2) ──────────────────────────────────────────
