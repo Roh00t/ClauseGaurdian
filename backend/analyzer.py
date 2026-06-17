@@ -218,10 +218,18 @@ def _parse_combined(raw: str) -> dict:
         start = raw.find("{")
         end = raw.rfind("}")
         if start != -1 and end > start:
+            candidate = raw[start:end + 1]
             try:
-                data = json.loads(raw[start:end + 1])
-            except json.JSONDecodeError as e:
-                raise ValueError(f"LLM returned invalid JSON: {e}. First 300 chars: {raw[:300]}")
+                data = json.loads(candidate)
+            except json.JSONDecodeError:
+                # Fix 7: also tolerate trailing commas before } or ] (a common
+                # Haiku slip), e.g. {"a":1,} or [1,2,]. Applied only in this
+                # last-ditch salvage path, so well-formed JSON is never touched.
+                candidate2 = re.sub(r",(\s*[}\]])", r"\1", candidate)
+                try:
+                    data = json.loads(candidate2)
+                except json.JSONDecodeError as e:
+                    raise ValueError(f"LLM returned invalid JSON: {e}. First 300 chars: {raw[:300]}")
         else:
             raise ValueError(f"LLM returned no JSON object. First 300 chars: {raw[:300]}")
 
@@ -373,11 +381,13 @@ EMPLOYMENT DOCUMENTS (formal contracts and forms):
 Analyse all documents. Return the combined JSON with both "analysis" and "judgment" sections.""".strip()
 
     # LLM JSON is occasionally malformed (a trailing comma, an unescaped char,
-    # a stray preamble). When it IS valid it's correct, so retry up to 3x on a
-    # parse/validation failure before giving up. Timeouts are NOT retried — they
-    # would blow the latency budget.
+    # a stray preamble). When it IS valid it's correct, so retry up to 4x on a
+    # parse/validation failure before giving up (Fix 7: 3x -> 4x catches most of
+    # the residual transient-502 cases). Only ValueError (JSON parse/validation)
+    # is retried — TimeoutError and other errors propagate so a slow/broken
+    # request is NOT made 4x slower.
     last_err = None
-    for _ in range(3):
+    for _ in range(4):
         try:
             raw = _call_with_timeout(COMBINED_SYSTEM_PROMPT, user_message)
             data = _parse_combined(raw)

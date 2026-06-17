@@ -16,7 +16,6 @@ import os
 import sys
 import json
 import time
-import uuid
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -71,6 +70,13 @@ _session_token_counts: dict = {}  # token -> list[timestamp]
 def _check_session_rate(token: str, limit: int = _SESSION_LIMIT, window: int = _SESSION_WINDOW) -> bool:
     """True if this token is under its limit (and records the hit); False if over."""
     now = time.time()
+    # Fix 6: lazy eviction on each write (no background loop -> no threading
+    # issues in FastAPI). Drop any token whose newest request is older than
+    # 2x the window, so the dict can't grow unbounded over long uptime.
+    stale = [k for k, v in _session_token_counts.items()
+             if not v or now - max(v) > window * 2]
+    for k in stale:
+        del _session_token_counts[k]
     timestamps = [t for t in _session_token_counts.get(token, []) if now - t < window]
     if len(timestamps) >= limit:
         _session_token_counts[token] = timestamps  # keep pruned
@@ -298,15 +304,13 @@ async def analyze(
     # ── 6. PHASE 2: NO server-side session persistence. ─────────────────────
     # The session (analysis results, entity map, etc.) is stored client-side in
     # the browser's IndexedDB — the server is stateless w.r.t. user content
-    # ("we don't have your data"). We still mint a server-side id for response
-    # correlation, but the client generates its own UUID for storage. The
-    # X-Session-Storage header tells the frontend to persist the result itself.
+    # ("we don't have your data"). The client generates its own UUID for storage;
+    # Fix 4 removed the vestigial server-minted session_id from the response.
+    # The X-Session-Storage header tells the frontend to persist the result.
     # (regulations and scrape_log tables are server data and are still written.)
-    session_id = uuid.uuid4().hex[:8]
     response.headers["X-Session-Storage"] = "client"
 
     return {
-        "session_id": session_id,
         "docs_processed": len(contract_docs),
         "context_docs_processed": len(context_docs),
         "extraction_errors": contract_errors + context_errors,

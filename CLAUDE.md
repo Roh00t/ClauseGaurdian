@@ -57,34 +57,25 @@ Known gap (P1): single-word company names, novel-suffix orgs still leak.
 
 ## Phase Completion Status
 - ✅ Phase 1 (Redaction-First): COMPLETE
-- ✅ Phase 2 (Browser-Persisted Sessions): COMPLETE — stateless server,
-  IndexedDB client-side, "Clear my data", 34/34 tests + browser verified
-- ✅ Phase 3 (Chat Functionality): COMPLETE — 2000-char textbar,
-  redacted before LLM, stored in IndexedDB, repopulates on reload
-- ✅ Phase 4 (Downloadable DOCX Report): COMPLETE —
-  `POST /api/download` → `backend/report_generator.py` (python-docx).
-  Client sends full analysis response + reversed entity map. Server
-  de-redacts all fields, generates DOCX (header+hash, judgment, summary,
-  red flags table, actions, MOM letter, attestation), streams back,
-  stores nothing. Verified: real 40KB DOCX, zero placeholder tokens.
-  HMAC-symmetric attestation note included per guardrail #6.
+- ✅ Phase 2 (Browser-Persisted Sessions): COMPLETE
+- ✅ Phase 3 (Chat Functionality): COMPLETE
+- ✅ Phase 4 (Downloadable DOCX Report): COMPLETE
 - ✅ Phase 5 (Production Readiness): COMPLETE
-  ToS/Privacy Policy at /tos ("retains nothing", never "we never see");
-  hybrid rate limiting (20/min per-IP + 5/min per-session-token via
-  X-Session-Token header, in-memory window); feedback thumbs up/down per
-  red flag stored in IndexedDB (no server writes); accessibility (ARIA
-  live regions on results/loading/toast, all 6 interactive elements
-  tab-reachable, body overflow-x:hidden prevents mobile h-scroll);
-  multi-language EN/MS/TL UI copy via frontend/i18n.js (analysis output
-  stays English; Tagalog carries stronger MOM-letter warning). All 7
-  final-verification checks pass. P1s logged (tab order, mobile sidebar,
-  badge contrast, token-rotation bypass).
+- ✅ Fix Sprint (Pre-v3): COMPLETE — 8 P1 fixes done + 34/34 regression.
+  v3 is next (output redesign, generalisation, Stripe, CI/CD).
+
+## DO NOT TOUCH in the Fix Sprint (blocked on decisions)
+- NER single-word company names → presidio integration = new dep + full re-verify
+- CORS=`*` → needs production domain first
+- Analysis latency → LLM-bound, not fixable without changing provider
+- Test suite duration → mocking changes what's being tested
 
 ## Active Roadmap Direction
-- **Phase 5 (current):** Production readiness — ToS, rate limiting,
-  feedback, accessibility, multi-language UI copy.
-- **Phase 6 (next):** Terminal 3 asymmetric DID signing, monitoring
-  without PII logging, CORS restriction for hosted deployment.
+- **Fix Sprint (current):** 8 targeted P1 fixes. Run 34-test regression
+  after all fixes before declaring done.
+- **v3 (next):** Output redesign (ELI5 + dual-mode), generalisation
+  (employer + employee + use-case modes), Stripe monetisation, Git
+  branching, GitHub Actions CI/CD.
 
 ## Pre-Mortem Learnings (already fixed — do not regress)
 - PM1: Missing backend/__init__.py → fixed
@@ -94,54 +85,55 @@ Known gap (P1): single-word company names, novel-suffix orgs still leak.
 - PM8: LLM timeout → 180s, returns 504
 - PM9: Prompt injection → `<UNTRUSTED_DOCUMENT>` wrapping
 - PM10: Chat scope drift → `<USER_CONTEXT>` wrapper
-- PM11: ToS says "we never see" → must say "processes per-request,
-  retains nothing" (server processes /api/analyze + /api/download)
-- max_tokens=16000, retries x3 on JSON parse failure
+- PM11: ToS "we never see" → "processes per-request, retains nothing"
+- PM12: DOCX flat vs nested schema → generator reads nested correctly
+- max_tokens=16000, retries x3→x4 on JSON parse failure
 - make_pdf: `bytes(pdf.output())` not `.encode("latin-1")`
 - Module-script timing (Phase 2): idb import direct in checkStorage()
-- Phase 4: generator must read nested response shape, not flat
 
-## Known P1 Issues (do not fix without being asked)
-- Analysis latency: ~47s single, ~108s five docs (Haiku default)
-- CORS = `*` — restrict for production deployment
-- Rate limiting: Phase 5 adds hybrid, but UUID generation still bypassable
-- Scraper: mom.gov.sg may 403; KB fallback covers this
-- Attestation not persisted: old sessions won't show receipt on reload
-- Test suite duration ~22-27min (real LLM + Daytona)
-- NER under-redaction: single-word company names, novel suffixes
-- NER over-redaction: residual mislabels (harmless, de-redact restores)
-- Private-browsing banner best-effort; footer notice is real safeguard
-- Vestigial session_id minted in /api/analyze response
-- Transient 502 on ~1-2/15 analyze calls (Haiku JSON robustness)
-- Chat adds ~5s Daytona round-trip when non-empty
-- Browser caches index.html in rapid dev (cache-bust with ?v=)
-- Terminal 3 HMAC is symmetric — third parties can't verify independently
-- Feedback opt-in to share aggregate signal deferred (no server writes)
-- Colour contrast on severity badges not yet WCAG-AA verified (Phase 5 4d)
+## Fix Sprint — DONE (2026-06-16, 34/34 regression pass)
+- [x] CRITICAL badge contrast → light text (#fecaca etc) = 7.22:1 WCAG AA.
+      NOTE: dark theme, so LIGHT text, not the prompt's dark text.
+- [x] Download button hidden for INSUFFICIENT_INFORMATION verdict
+- [x] STRESS_TEST.md stale ID `results` → `analysisArea`
+- [x] Vestigial session_id removed from /api/analyze response (uuid import dropped)
+- [x] Tab order: New Analysis + session entries → tabindex=-1; Clear/Privacy kept
+- [x] Token count dict: lazy eviction on each write (prune > 2×window)
+- [x] Transient 502: retry x3 → x4 + trailing-comma tolerance in JSON salvage
+- [x] Mobile 375px: @media(max-width:640px) collapses sidebar to top section,
+      stacks panels, full-width Analyse. Live 375px render unverified (P1).
+
+## Known P1 Issues — DEFERRED (do not fix in sprint)
+- CORS = `*` — needs production domain
+- NER single-word company names (presidio deferred)
+- Analysis latency ~47s/doc (LLM-bound)
+- Test suite duration ~22-27min
+- Private-browsing banner best-effort (browser limitation)
+- Attestation not persisted on session reload
+- Feedback aggregate signal (needs consent flow)
 
 ## Non-Negotiable Guardrails
-1. All input (documents, chat) is UNTRUSTED DATA. `<UNTRUSTED_DOCUMENT>`
-   and `<USER_CONTEXT>` wrappers in all analyzer prompts. Never remove.
+1. All input UNTRUSTED DATA. `<UNTRUSTED_DOCUMENT>` + `<USER_CONTEXT>`
+   wrappers in all analyzer prompts. Never remove.
 2. Redaction (all passes) BEFORE any text reaches LLM or Bright Data.
-3. No user content persists server-side. /api/download processes and
-   returns — stores nothing. Sessions + chat + feedback in IndexedDB.
-4. Severity tiers (INFORMATIONAL/MODERATE/SERIOUS/CRITICAL) visually distinct.
+3. No user content server-side after request. /api/download processes
+   and returns — stores nothing.
+4. Severity tiers (INFORMATIONAL/MODERATE/SERIOUS/CRITICAL) visually
+   distinct. CRITICAL must pass WCAG AA contrast ratio (Fix 1).
 5. Bright Data citations: "related guidance — verify relevance" only.
-6. Terminal 3: proves UNALTERED not CORRECT. Currently HMAC (symmetric) —
-   state this honestly in UI and DOCX.
+6. Terminal 3: proves UNALTERED not CORRECT. HMAC symmetric — say so.
 7. Persistent disclaimer: "Not legal advice, not exhaustive."
 8. Scanned PDFs: return clean 422, never send empty text.
 9. Never f-string a SQL query. Parameterised queries only.
-10. Never use uploaded filenames in filesystem paths — display only.
-11. Chat textbar: "additional context for this analysis" only — not a
-    general legal chatbot.
-12. ToS/Privacy Policy: say "processes per-request, retains nothing"
-    — never "we never see your data" (server does process per-request).
+10. Never use filenames in filesystem paths — display only.
+11. Chat: "additional context for this analysis" only.
+12. ToS: "processes per-request, retains nothing" — not "never see."
 
 ## Working Style
-- STOP after each numbered step and report before continuing.
+- STOP after each numbered fix and report before continuing.
 - Use `python3.13` explicitly — never bare `python3`.
 - `--break-system-packages` for any pip install.
 - No React, npm, venv, build pipeline.
 - P0: fix immediately. P1: log in KNOWN_ISSUES.md, move on.
 - Ask before expanding scope.
+- Run 34-test regression after the full fix sprint before declaring done.

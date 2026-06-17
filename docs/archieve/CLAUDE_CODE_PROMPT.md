@@ -1,30 +1,33 @@
-Read CLAUDE.md before writing a single line. This is Phase 5 — production
-readiness. Read KNOWN_ISSUES.md to understand current P1 state.
+# Claude Code Prompt — Known Issues Fix Sprint (Pre-v3)
 
-## Pre-Mortem, Steelman, Red Team (applied — do not skip these, read them)
+Fix all fixable P1 issues before v3 work begins. This is a clean-up sprint, not a feature sprint. Read CLAUDE.md fully before writing a single line. Then read KNOWN_ISSUES.md.
 
-PRE-MORTEM: The most likely Phase 5 failure is the ToS/Privacy Policy claiming
-"we never see your data" when the server processes the entity_map and analysis
-JSON per-request. "We don't store" is true; "we never see" is not. If this goes
-public and a privacy researcher reads the policy against the code, it's a
-credibility failure worse than having no policy at all. Fix: say "processes
-per-request, retains nothing" — precise and true.
+---
 
-STEELMAN: Multi-language is not nice-to-have polish. The workers most exposed
-to bond/contract exploitation in Singapore are often not native English speakers.
-Building an "employee rights tool" that only works in English is a genuine
-contradiction. Even best-effort Malay/Tagalog disclaimers and MOM-letter
-templates close a real gap for the people who need this most.
+## Pre-Mortem, Steelman, Red Team (read before starting)
 
-RED TEAM per item — read before implementing each:
+**PRE-MORTEM:** ClauseGuard goes public on v3. A legal agency does a demo. Their accessibility reviewer opens DevTools and finds the CRITICAL severity badge is red-on-red (contrast ratio ~1:1 — invisible to anyone with red-green colour blindness). A mobile user on a 375px screen finds the sidebar occupies 70% of the screen. A transient 502 silently drops their analysis with no retry. These are the three failure modes most likely to surface in the first 48 hours of public use. All three are fixable today.
 
-| Item | Critical failure mode | Required mitigation |
-|---|---|---|
-| ToS/Privacy Policy | "We never see your data" is inaccurate — server processes per-request | Say "processes per-request, retains nothing" — never "never see" |
-| Rate limiting | Per-session-token limits bypassed by generating new crypto.randomUUID() | Hybrid: per-IP burst + per-session-token as secondary gate |
-| Feedback | Server-side storage contradicts Phase 2 "stateless server" | Client-side IndexedDB only for MVP; no silent server writes |
-| Multi-language | LLM-translated legal citation is wrong in target language | Stronger disclaimer for non-English: "not a legal translation — verify all legal references before submitting" |
-| Accessibility | Dynamic content (verdict banner, results section) has no ARIA live region | Add role="status" aria-live="polite" to result containers |
+**STEELMAN:** Fixing P1s before v3 is not premature polish — it is the minimum bar for calling something a product rather than a prototype. Enterprise buyers and legal agencies will do due diligence. A WCAG failure on the most important UI element (CRITICAL severity badge) in a contract analysis tool is a credibility failure, not a minor cosmetic issue.
+
+**RED TEAM:**
+
+| Fix | Risk if done naively | Mitigation |
+| --- | --- | --- |
+| Badge contrast CSS | Changing severity badge colours may break dark theme elsewhere | Only change text colour — don’t touch background or border |
+| Mobile responsive layout | Stacking panels vertically changes the UX flow; users may not see Panel B | Add clear label “Optional: Dispute Context ↓” when stacked |
+| 4th retry for 502 | An extra retry means the analyze endpoint could take 4× LLM time | Only retry on JSON parse failure, NOT on timeout or network error |
+| Eviction sweep for token dict | A background loop in FastAPI can cause threading issues | Use a lazy eviction approach (prune on each write, not in a loop) |
+| Remove vestigial session_id | Clients that read session_id from the response will break | Check frontend for any reference to data.session_id before removing |
+
+**HARD STOPS — do NOT touch these in this sprint:**
+
+- NER single-word company names (presidio integration = new dependency + full re-verify)
+- CORS=`*` (needs production domain first)
+- Analysis latency (LLM-bound)
+- Test suite duration (mocking changes what’s being tested)
+
+---
 
 ## Pre-Flight
 
@@ -34,66 +37,154 @@ python3.13 -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 &
 sleep 4 && curl -s http://127.0.0.1:8000/health
 ```
 
-Expected: {"status": "ok"}. Report then continue.
+Expected: `{"status": "ok"}`. Report then continue.
 
 ---
 
-## Step 1 — Terms of Service + Privacy Policy
+## Fix 1 — CRITICAL Badge Contrast (WCAG AA)
 
-Create `frontend/tos.html` served as a static page at `/tos`.
+**Problem:** CRITICAL severity badge is `rgb(239,68,68)` text on `rgba(239,68,68,0.25)` background. Same hue, contrast ratio ~1.3:1. WCAG AA requires 4.5:1 for normal text.
 
-**Required content — do not omit or soften any of these:**
+**Fix:** In `frontend/index.html`, find the severity badge CSS and update ONLY the text colours (do not change backgrounds):
 
-Privacy section must include:
-- "ClauseGuard processes your uploaded documents per-request to generate analysis. The server retains nothing after the request completes."
-- "Your analysis results, session history, and chat context are stored in YOUR browser's local storage (IndexedDB). They exist only on your device. Clearing your browser data or clicking 'Clear my data' permanently deletes them."
-- "When you click 'Analyse Everything', your document text is sent to TokenRouter (an AI API proxy) and Bright Data (a web data service) to generate the analysis and retrieve regulatory guidance. These are third-party services with their own privacy policies."
-- "ClauseGuard does not use cookies. There is no user account, no login, and no tracking."
-- "This tool is designed for Singapore employment contracts (MVP scope)."
+```css
+.severity-critical { color: #7f1d1d; }  /* dark red, contrast ~8:1 on translucent red bg */
+.severity-serious  { color: #7c2d12; }  /* dark orange */
+.severity-moderate { color: #713f12; }  /* dark amber */
+.severity-informational { color: #1e3a5f; }  /* dark blue */
+```
 
-ToS section must include:
-- "This tool is not a lawyer and does not provide legal advice."
-- "Analysis results are generated by AI and may be inaccurate or incomplete. Always verify findings with a qualified legal professional."
-- "Do not upload documents containing information you would not want processed by a third-party AI service."
+Verify via Chrome MCP:
 
-Add a footer link to `/tos` on every page (index.html). The link must say
-"Privacy Policy & Terms" — not hidden, not in a cookie banner only.
+```jsx
+const el = document.querySelector('[class*="severity-critical"], .badge-critical, [data-severity="CRITICAL"]');
+if (el) {
+  const s = window.getComputedStyle(el);
+  console.log('color:', s.color, 'bg:', s.backgroundColor);
+}
+```
 
-Verify: `curl -s http://127.0.0.1:8000/tos | grep -c "retains nothing"` → 1.
-Report.
+If the selector returns null, inspect the DOM to find the actual severity class names being applied and adjust the CSS accordingly. Report the actual class names found and the computed colours after the fix.
 
 ---
 
-## Step 2 — Rate Limiting: Hybrid Per-IP + Per-Session-Token
+## Fix 2 — Hide Download Button for INSUFFICIENT_INFORMATION
 
-Current: per-IP via slowapi (5/min on /api/analyze). This is:
-- Too restrictive for shared office/NAT environments (50 people, one IP)
-- Trivially bypassed per-session if someone generates new session tokens
+**Problem:** "Download Report" button appears even when the verdict is INSUFFICIENT_INFORMATION. The DOCX generates but the MOM letter section is empty — a confusing download for the user.
 
-Replace with a hybrid in `backend/main.py`:
+**Fix:** In `frontend/index.html`, in the `showDownloadButton()` function (or wherever `currentReport` is set and the button is shown), add a verdict check:
 
-**Per-IP:** raise the /api/analyze limit from 5/min to 20/min (generous enough
-for a single legitimate user doing retries, not generous enough for abuse).
+```jsx
+function showDownloadButton(report) {
+  const verdict = report?.judgment?.verdict;
+  if (verdict === 'INSUFFICIENT_INFORMATION') {
+    document.getElementById('download-report-btn').style.display = 'none';
+    return;
+  }
+  document.getElementById('download-report-btn').style.display = 'block';
+}
+```
 
-**Per-session-token secondary gate:** /api/analyze accepts an optional
-`X-Session-Token` header. If present, enforce an additional 5/min limit
-keyed on that token value (stored in a server-side dict with TTL expiry).
-If absent, only the IP limit applies. The client sends
-`headers: { "X-Session-Token": sessionId }` where sessionId is the
-`crypto.randomUUID()` already being used for IndexedDB.
+Also apply the same check in `loadSession()` when restoring a session.
 
-**Why this works:** a legitimate user making multiple analyses hits both limits
-normally. A bad actor bypassing per-IP via proxies still gets rate-limited
-per session-token. A bad actor generating new UUIDs per request is rate-limited
-per-IP. Neither alone is sufficient; together they cover both attack vectors.
+Verify: run an analysis on `sample_data/synthetic_contract.pdf` with NO context files (Panel B empty). Verdict should be INSUFFICIENT_INFORMATION. Download button should NOT appear. Report.
 
-Implementation: use a simple `dict` with timestamp lists (no Redis needed for
-MVP). Example:
+---
+
+## Fix 3 — STRESS_TEST.md Stale Element ID
+
+**Problem:** STRESS_TEST.md Part A, Phase 5 tests (TEST P5-4 TEST A) checks `document.getElementById('results')`, but the real results container is `#analysisArea`.
+
+**Fix:** Open `STRESS_TEST.md` and find the line:
+
+```jsx
+document.getElementById('results')?.getAttribute('role') // should be "status"
+```
+
+Replace with:
+
+```jsx
+document.getElementById('analysisArea')?.getAttribute('role') // should be "status"
+```
+
+Verify: `grep -n 'getElementById.*results' STRESS_TEST.md` should return no results after the fix (there should be no remaining references to `getElementById('results')`).
+
+---
+
+## Fix 4 — Remove Vestigial session_id from /api/analyze Response
+
+**Problem:** The server still mints and returns a `session_id` in the `/api/analyze` response. Since Phase 2, sessions are client-generated (`crypto.randomUUID()`) and client-stored (IndexedDB). The server session_id is vestigial and misleading.
+
+**First:** Check the frontend for any reference to `data.session_id` or `response.session_id`:
+
+```bash
+grep -n 'session_id' frontend/index.html
+```
+
+If any references exist, note them and update them before removing from the backend.
+
+**Then:** In `backend/main.py`, find where `session_id` is added to the `/api/analyze` response JSON and remove it. The response should not include a server-generated session identifier.
+
+Verify:
+
+```bash
+curl -s -X POST http://127.0.0.1:8000/api/analyze \
+  -F "contract_files=@sample_data/synthetic_contract.pdf" | \
+  python3.13 -c "import sys,json; d=json.load(sys.stdin); print('session_id present:', 'session_id' in d)"
+```
+
+Expected: `session_id present: False`. Report.
+
+---
+
+## Fix 5 — Tab Order (Sidebar DOM Reorder)
+
+**Problem:** The sidebar is before the main content in the DOM, so tabbing through the page hits sidebar items (New Analysis, Clear my data, session entries) before the upload panels. Users tabbing through the main workflow (Panel A → Panel B → chat → Analyse) have to navigate through sidebar controls first.
+
+**Fix:** Add `tabindex="-1"` to sidebar interactive elements that are not part of the primary workflow, so they’re reachable by click but not in the tab sequence. The main workflow elements keep their natural tab order:
+
+```jsx
+// Find sidebar buttons and session list items and set tabindex=-1
+document.querySelectorAll('#sidebar button, #sidebar a, #session-list li').forEach(el => {
+  el.setAttribute('tabindex', '-1');
+});
+```
+
+Apply this in the `init()` function and whenever the session list is re-rendered.
+
+Exceptions — these sidebar items SHOULD remain in tab order (set tabindex="0" explicitly):
+
+- "Clear my data" button (accessibility-critical action)
+- "Privacy Policy & Terms" link
+
+Verify via Chrome MCP:
+
+```jsx
+const focusable = [...document.querySelectorAll('button:not([tabindex="-1"]), textarea:not([tabindex="-1"]), input:not([tabindex="-1"]), a:not([tabindex="-1"])')]
+  .slice(0, 12)
+  .map(el => el.tagName + ' ' + (el.id || el.textContent?.trim().slice(0,30)));
+console.log(focusable);
+```
+
+Expected order: upload zone inputs, chat textarea, Analyse button, Clear my data, Privacy link. Sidebar session entries should NOT appear in this list. Report.
+
+---
+
+## Fix 6 — In-Memory Token Count Eviction (Lazy Sweep)
+
+**Problem:** `_session_token_counts` in `backend/main.py` accumulates small timestamp lists per token indefinitely. Long uptime with many distinct tokens = slow memory leak.
+
+**Fix:** Replace the current write with a lazy eviction — prune expired entries on each write, not in a background loop (avoids threading issues in FastAPI):
+
 ```python
-_session_token_counts: dict = {}  # token -> list of timestamps
-
 def _check_session_rate(token: str, limit: int = 5, window: int = 60) -> bool:
     now = time.time()
+    # Lazy eviction: clean up any token whose last request is older than window
+    stale = [k for k, v in _session_token_counts.items()
+             if not v or now - max(v) > window * 2]
+    for k in stale:
+        del _session_token_counts[k]
+    # Check and update current token
     timestamps = [t for t in _session_token_counts.get(token, []) if now - t < window]
     if len(timestamps) >= limit:
         return False
@@ -102,218 +193,140 @@ def _check_session_rate(token: str, limit: int = 5, window: int = 60) -> bool:
 ```
 
 Verify:
+
 ```bash
-# Test per-IP limit (should 429 after 20 rapid requests)
-for i in {1..22}; do curl -s -o /dev/null -w "%{http_code}\n" \
-  -X POST http://127.0.0.1:8000/api/analyze; done | tail -5
-
-# Test per-session-token limit (should 429 after 5 with same token)
-for i in {1..7}; do curl -s -o /dev/null -w "%{http_code}\n" \
-  -H "X-Session-Token: test-token-abc123" \
-  -X POST http://127.0.0.1:8000/api/analyze; done | tail -3
+# Simulate 100 distinct tokens, then check dict size
+python3.13 -c "
+import sys; sys.path.insert(0, '.')
+from backend.main import _check_session_rate, _session_token_counts
+import time
+for i in range(100): _check_session_rate(f'token-{i}')
+print('tokens tracked:', len(_session_token_counts))
+# Simulate time passing (we can't sleep 120s, just verify eviction logic exists)
+print('eviction logic present:', True)
+"
 ```
 
-Expected: 429s appear after the respective limits. Report counts.
+Report dict size and confirm the eviction block is present in the function. P1 — not a hard requirement to test exhaustively.
 
 ---
 
-## Step 3 — Feedback Mechanism (client-side only)
+## Fix 7 — 4th Retry for Transient 502 (Haiku JSON Failures)
 
-After each red flag card, add thumbs up/down buttons:
+**Problem:** `analyze_combined()` retries up to 3x on JSON parse/validation failure. The transient 502 rate is ~1-2 per 15 calls, occurring when Haiku returns malformed JSON even after 3 retries. A 4th retry would catch the remaining cases.
 
-```html
-<div class="flag-feedback" data-flag-id="{flag_index}">
-  <button class="feedback-btn" data-value="accurate" title="This flag is accurate">👍</button>
-  <button class="feedback-btn" data-value="inaccurate" title="This flag is inaccurate">👎</button>
-  <span class="feedback-note"></span>
-</div>
+**Important constraint:** Only retry on JSON parse failure. Do NOT retry on timeout (that would make slow requests 4× slower) and do NOT retry on network errors.
+
+**Fix:** In `backend/analyzer.py`, find the retry loop in `analyze_combined()` and change the max retries from 3 to 4:
+
+```python
+# Change
+for attempt in range(3):
+# To
+for attempt in range(4):
 ```
 
-On click:
-```javascript
-async function recordFeedback(sessionId, flagIndex, value) {
-  const { getSession, saveSession } = await import('/static/db.js');
-  const session = await getSession(sessionId);
-  if (!session) return;
-  const feedback = session.feedback || {};
-  feedback[flagIndex] = { value, recorded_at: new Date().toISOString() };
-  await saveSession({ ...session, feedback });
-  // Update UI
-  const note = document.querySelector(`[data-flag-id="${flagIndex}"] .feedback-note`);
-  if (note) note.textContent = value === 'accurate' ? '✓ Marked accurate' : '✗ Marked inaccurate';
-}
-```
+Also check whether the fence-stripping logic handles all common malformed patterns:
 
-No server writes. Feedback lives in IndexedDB alongside the session.
-Consistent with Phase 2's stateless-server architecture and guardrail #3.
+- JSON wrapped in `json ...`  → should already be stripped
+- JSON with a trailing comma before `}` → may not be handled
+- JSON with a leading explanation before the `{` → should be handled by finding first `{`
 
-Add `feedback` field to the IndexedDB session schema in `frontend/db.js`:
-```javascript
-// In session shape:
-// { ..., feedback: { 0: {value, recorded_at}, 3: {value, recorded_at}, ... } }
-```
+If any of these patterns are not handled, add them to the fence-stripping step before retry.
 
-Verify: run an analysis, click 👍 on flag 0, reload page, click the session —
-does the 👍 button show as already selected / note text show "Marked accurate"?
-Report.
+Verify: `grep -n 'range(3\|range(4' backend/analyzer.py` should show `range(4)` in the retry loop. Report.
 
 ---
 
-## Step 4 — Accessibility Pass
+## Fix 8 — Mobile Responsive Layout (375px)
 
-Run in this order — fix P0s (crash/unusable), log P1s (suboptimal):
+**Problem:** The sidebar is 256px fixed width. At 375px viewport, this leaves 119px for the main content area — too cramped for the upload panels, chat textarea, and analyse button.
 
-**4a — ARIA live regions for dynamic content:**
-```html
-<!-- Results container (add role + aria-live) -->
-<div id="results" role="status" aria-live="polite" aria-label="Analysis results">
+**Fix:** Add a CSS media query that:
 
-<!-- Loading overlay -->
-<div id="loading-overlay" role="status" aria-live="assertive" aria-label="Analysis in progress">
+1. Collapses the sidebar to a top bar or hides it behind a toggle at < 640px
+2. Stacks Panel A and Panel B vertically
+3. Makes the Analyse button full-width
 
-<!-- Toast notifications -->
-<div id="toast-container" role="alert" aria-live="assertive">
-```
-
-Verify: Using Chrome accessibility tree (DevTools > Accessibility panel), confirm
-`results` has `role=status` and `aria-live=polite`. Report.
-
-**4b — Keyboard navigation:**
-Verify tab order reaches (in order):
-1. "New Analysis" button
-2. Panel A upload zone
-3. Panel B upload zone
-4. Chat textarea
-5. "Analyse Everything" button
-6. "Clear my data" button
-
-Run via Chrome MCP:
-```javascript
-// Tab through and collect focusable elements in order
-const focusable = document.querySelectorAll(
-  'button:not([disabled]), [href], input, textarea, [tabindex]:not([tabindex="-1"])'
-);
-[...focusable].slice(0,10).map(el => el.tagName + '#' + (el.id || el.textContent?.slice(0,20)));
-```
-
-Report the order. If any critical interactive element is not reachable by tab,
-add `tabindex="0"` as a fix. Log non-critical ordering issues as P1.
-
-**4c — Mobile viewport:**
-In Chrome MCP, set viewport to 375px wide:
-```javascript
-window.resizeTo(375, 812);
-document.documentElement.scrollWidth;  // > 375 means horizontal scroll = P0
-```
-
-Check:
-- Both upload panels visible without horizontal scroll?
-- "Analyse Everything" button full width or clearly visible?
-- Chat textarea visible?
-
-Report viewport width and whether horizontal scroll occurs. If horizontal scroll
-exists, add to `frontend/index.html` styles:
 ```css
-body { max-width: 100%; overflow-x: hidden; }
-.panels-container { flex-direction: column; }  /* stack panels on mobile */
-```
-
-**4d — Colour contrast (P1 check only, do not fix now):**
-```javascript
-// Check if CRITICAL badge meets WCAG AA (4.5:1 ratio minimum)
-const critBadge = document.querySelector('.severity-critical');
-if (critBadge) {
-  const style = window.getComputedStyle(critBadge);
-  console.log('color:', style.color, 'bg:', style.backgroundColor);
+@media (max-width: 640px) {
+  #sidebar {
+    width: 100%;
+    height: auto;
+    position: relative;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding: 0.5rem;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+  #session-list {
+    display: none;  /* Hide session list on mobile — too cramped */
+  }
+  .panels-container {
+    flex-direction: column;
+  }
+  .panel {
+    width: 100%;
+  }
+  #analyse-btn {
+    width: 100%;
+  }
+  body {
+    flex-direction: column;
+  }
 }
 ```
-Log result in KNOWN_ISSUES.md as P1 if ratio is below 4.5:1.
+
+If the actual class/ID names differ from above, read the DOM and apply to the correct selectors.
+
+Verify via Chrome MCP — resize to 375px and check scrollWidth:
+
+```jsx
+window.innerWidth  // should be 375 if resize worked
+document.documentElement.scrollWidth  // must equal or be less than 375
+```
+
+If Chrome MCP resize still can’t shrink the window, verify the CSS is applied by checking that `.panels-container` has `flex-direction: column` in the computed styles at narrow width:
+
+```jsx
+const panelContainer = document.querySelector('.panels-container, #panels-container, .upload-panels');
+const mqTest = window.matchMedia('(max-width: 640px)');
+console.log('media query matches:', mqTest.matches, '/ panels container:', panelContainer?.className);
+```
+
+Report: actual class names found, computed flex-direction, scrollWidth. If MCP can’t verify a true 375px render, log as P1 pending manual mobile test.
 
 ---
 
-## Step 5 — Multi-Language Support (Malay + Tagalog MVP)
+## Post-Fix: Run Full Regression Suite
 
-**Scope:** translate ONLY the following, not the analysis output itself:
-1. Persistent disclaimer text
-2. Redaction banner text
-3. MOM letter template preamble and sign-off
-4. The privacy/ToS footer link label
-5. A language selector (EN / MS / TL) in the top bar
+After all 8 fixes, run the full automated test suite to confirm no regressions:
 
-**Do NOT translate:** red flags, executive summary, recommended actions,
-or any LLM-generated content. Those are analysis outputs, not UI copy.
-Translating LLM output would require separate LLM calls per language with
-no quality guarantee — that's Phase 6 if it ever happens.
-
-Add a `frontend/i18n.js` file with three language objects:
-
-```javascript
-export const translations = {
-  en: {
-    disclaimer: "Not legal advice and not exhaustive. A 'no red flags found' result does not guarantee a contract is fair. Singapore employment contracts (MVP scope).",
-    redaction_banner_title: "Privacy Protection Active",
-    redaction_banner_note: "Automated redaction is best-effort. It may not catch all identifying details. Review before relying on this for sensitive documents.",
-    mom_letter_note: "Fill in the bracketed fields before sending. AI-generated — review carefully before submission.",
-    privacy_link: "Privacy Policy & Terms"
-  },
-  ms: {
-    disclaimer: "Ini bukan nasihat undang-undang dan tidak menyeluruh. Keputusan 'tiada tanda merah' tidak menjamin kontrak adalah adil. Kontrak pekerjaan Singapura (skop MVP).",
-    redaction_banner_title: "Perlindungan Privasi Aktif",
-    redaction_banner_note: "Pengolahan data dilakukan secara automatik. Ia mungkin tidak mengesan semua maklumat pengenalan. Semak sebelum menggunakan dokumen sensitif.",
-    mom_letter_note: "Isi medan dalam kurungan sebelum menghantar. Dijana oleh AI — semak dengan teliti sebelum dikemukakan.",
-    privacy_link: "Polisi Privasi & Terma"
-  },
-  tl: {
-    disclaimer: "Hindi ito legal na payo at hindi kumprehensibo. Ang resulta na 'walang red flag' ay hindi ginagarantiyahan na patas ang kontrata. Mga kontrata sa trabaho sa Singapore (MVP scope).",
-    redaction_banner_title: "Aktibo ang Proteksyon ng Privacy",
-    redaction_banner_note: "Ang awtomatikong pag-redact ay pinakamahusay na pagsisikap. Maaaring hindi mahuli ang lahat ng detalyeng nagpapakilala. Suriin bago gamitin para sa sensitibong dokumento.",
-    mom_letter_note: "Punan ang mga field sa loob ng bracket bago ipadala. Ginawa ng AI — suriin nang maingat bago isumite. BABALA: Ito ay isang heneralisadong pagsasalin at hindi isang legal na pagsasalin. I-verify ang lahat ng legal na sanggunian kasama ang isang kwalipikadong tagapagsalin bago isumite sa MOM.",
-    privacy_link: "Patakaran sa Privacy at Mga Tuntunin"
-  }
-};
+```bash
+CLAUSEGUARD_TEST_BUDGET=180 python3.13 -m pytest tests/test_backend.py -v --tb=short 2>&1 | tail -20
 ```
 
-Note the Tagalog `mom_letter_note` deliberately has a stronger warning than
-English/Malay — this is the mitigation for the pre-mortem finding above.
-
-Add a language selector to the top bar:
-```html
-<select id="lang-selector" aria-label="Language">
-  <option value="en">EN</option>
-  <option value="ms">MS</option>
-  <option value="tl">TL</option>
-</select>
-```
-
-On change, call `applyTranslations(lang)` which updates all translated elements
-by data-i18n attribute:
-```html
-<p data-i18n="disclaimer">Not legal advice...</p>
-```
-
-Persist selected language in localStorage (not IndexedDB — it's a UI preference,
-not user data):
-```javascript
-localStorage.setItem('cg_lang', selectedLang);
-```
-
-Verify: switch to Tagalog, confirm disclaimer text changes. Switch back to EN,
-confirm it reverts. Hard-refresh — does language preference persist?
-Report.
+Expected: 34/34 pass. Any new failure is a P0 — fix before moving on.
 
 ---
 
 ## Final Verification
 
-1. `/tos` returns HTML containing "retains nothing": PASS/FAIL
-2. Rate limiting: 429 appears after 20 IP requests / after 5 same-session-token requests: PASS/FAIL
-3. Feedback: thumbs up on flag 0, reload, session shows marked state: PASS/FAIL
-4. Accessibility: `results` div has `role=status` and `aria-live=polite`: PASS/FAIL
-5. Accessibility: all 6 interactive elements reachable by tab: PASS/FAIL
-6. Mobile: no horizontal scroll at 375px: PASS/FAIL
-7. Multi-language: Tagalog disclaimer renders, persists on reload: PASS/FAIL
+1. CRITICAL badge is dark red text, contrast visibly improved (not red-on-red)
+2. Analysis on contract-only (no context) — Download button does NOT appear
+3. `grep -n 'getElementById.*results' STRESS_TEST.md` returns 0 results
+4. `/api/analyze` response JSON does NOT contain `session_id` key
+5. Tab order: upload panels appear before sidebar session entries in focusable sequence
+6. `_check_session_rate` function contains eviction logic
+7. `analyze_combined()` uses `range(4)` not `range(3)`
+8. `@media (max-width: 640px)` block exists in `frontend/index.html`
+9. 34/34 automated tests pass
 
-Log P0s (fix now) and P1s (KNOWN_ISSUES.md). Report Phase 5 complete status.
+Report all 9 checks pass/fail. Log any new P1s in KNOWN_ISSUES.md. Stop after final verification — do not start v3 work without being asked.
 
-Per CLAUDE.md: stop after each numbered step and report before continuing.
-Use python3.13 explicitly. Ask before expanding scope.
+Per CLAUDE.md: stop after each fix and report before continuing. Use `python3.13` explicitly.

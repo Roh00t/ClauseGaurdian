@@ -403,3 +403,70 @@ All 5 steps done; all 7 final-verification checks PASS. No P0s.
 - **Doc P1:** STRESS_TEST.md P5-4 TEST A reads `getElementById('results')`, but the real results
   container is `#analysisArea` (the task used `id="results"` illustratively). ARIA verified on
   `#analysisArea` (role=status, aria-live=polite). The test doc's id is stale, not a code gap.
+  
+## FIX SPRINT — Pre-v3 Known Issues (2026-06-15/16, in progress)
+
+Fixing all fixable P1s before v3 work begins. 8 targeted fixes.
+Run `CLAUSEGUARD_TEST_BUDGET=180 python3.13 -m pytest tests/test_backend.py`
+after all fixes to confirm no regressions (expected: 34/34).
+
+### Fix 1 — CRITICAL Badge Contrast (WCAG AA)
+CRITICAL severity badge was red text on translucent-red background (~1.3:1 contrast).
+Fix: dark red text `#7f1d1d` on existing background. Same pattern for SERIOUS/MODERATE/INFO.
+
+### Fix 2 — Download Button Hidden for INSUFFICIENT_INFORMATION
+Button previously appeared even when no MOM letter was generated.
+Fix: `showDownloadButton()` checks `report.judgment.verdict` and hides button for INSUFFICIENT.
+
+### Fix 3 — STRESS_TEST.md Stale ID
+TEST P5-4 checked `getElementById('results')` — real container is `#analysisArea`.
+Fix: updated all references in STRESS_TEST.md.
+
+### Fix 4 — Vestigial session_id Removed
+Server minted a session_id in /api/analyze response since Phase 2 (vestigial; client
+generates its own UUID). Removed from response after confirming no frontend references.
+
+### Fix 5 — Tab Order
+Sidebar DOM precedes main content. Fix: `tabindex="-1"` on sidebar session entries and
+navigation buttons. "Clear my data" and Privacy link retain tabindex="0".
+
+### Fix 6 — Token Count Lazy Eviction
+`_session_token_counts` dict accumulated entries indefinitely. Fix: lazy eviction on
+each write — prunes tokens whose last request was > 2×window seconds ago.
+
+### Fix 7 — 4th Retry for Transient 502
+`analyze_combined()` retried x3 on JSON parse failure. Raised to x4.
+Also audited fence-stripping for: trailing comma before `}`, leading explanation before `{`.
+
+### Fix 8 — Mobile Responsive Layout
+256px fixed sidebar crammed 375px viewport. Fix: `@media (max-width: 640px)` block
+collapses sidebar to top bar, hides session list, stacks panels vertically,
+full-width Analyse button.
+
+### Post-sprint regression
+34/34 automated tests pass after all 8 fixes (to be confirmed on completion).
+## FIX SPRINT (Pre-v3) — COMPLETE (2026-06-16) — 34/34 regression pass
+
+All 8 targeted P1 fixes done and verified; full automated suite 34/34 (24:59), no regressions.
+1. CRITICAL badge contrast — `.pill-*` text → light tints (#fecaca/#fed7aa/#fde68a/#dbeafe).
+   Verified 7.22:1 on the composited dark-red bg (WCAG AA ≥4.5). NOTE: dark theme, so the fix is
+   LIGHTER text — the prompt's dark #7f1d1d would have been dark-on-dark and STILL failed.
+2. Download button hidden when verdict == INSUFFICIENT_INFORMATION (gated in showDownloadButton()).
+3. STRESS_TEST.md `getElementById('results')` → `getElementById('analysisArea')` (2 occurrences).
+4. Vestigial server `session_id` removed from /api/analyze response (no frontend refs; `import uuid` dropped).
+5. Tab order: `applySidebarTabindex()` sets tabindex=-1 on New Analysis + session entries; keeps
+   Clear-my-data + Privacy at tabindex=0. Called in init() and loadSessions().
+6. Token dict lazy eviction: prune tokens whose newest ts is > 2×window on each write (no bg loop).
+7. analyze_combined retry 3x → 4x (ValueError/JSON only, NOT timeout); salvage path now also tolerates
+   trailing commas before } or ]. (Fences + leading prose were already handled.)
+8. Mobile @media(max-width:640px): sidebar → full-width top section (Clear/Privacy stay reachable,
+   unlike the old display:none), session list hidden, panels stacked, Analyse full-width.
+
+### Remaining P1s after the sprint
+- **Mobile 375px live render unverified.** The CSS is present and parsed, but the Chrome MCP
+  resize_window can't shrink innerWidth below the screen, so a true 375px render couldn't be
+  measured. Needs a manual mobile test before v3 public launch.
+- **Tab order: Clear-my-data + Privacy precede the workflow** (they live in the sidebar, which is
+  DOM-before <main>). Getting them AFTER the workflow would need a positive-tabindex anti-pattern or
+  a DOM reorder — deliberately not done. All elements are reachable; only the relative order differs.
+- (Hard-stops untouched per scope: NER single-word orgs, CORS=*, latency, test-suite duration.)

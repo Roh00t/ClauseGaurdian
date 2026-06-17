@@ -74,9 +74,9 @@ TEST A — ARIA live regions:
 
 Open dev tools. Run in console:
 
-document.getElementById('results')?.getAttribute('role') // should be "status"
+document.getElementById('analysisArea')?.getAttribute('role') // should be "status"
 
-document.getElementById('results')?.getAttribute('aria-live') // should be "polite"
+document.getElementById('analysisArea')?.getAttribute('aria-live') // should be "polite"
 
 Expected: "status" and "polite". P0 if absent.
 TEST B — Keyboard navigation (tab through interactive elements):
