@@ -9,6 +9,7 @@
 # Documentation
 *.md
 !README.md
+
 # Python cache and environments
 __pycache__/
 *.pyc
