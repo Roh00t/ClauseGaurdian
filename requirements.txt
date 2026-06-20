@@ -23,6 +23,11 @@ daytona-sdk>=0.10.0               # Sandboxed execution for PII redaction + repo
 # ── Security & Rate Limiting ──────────────────────────────────────────────────
 slowapi>=0.1.9                    # Rate limiting (5 req/min per IP on /api/analyze)
 
+# ── Analytics ────────────────────────────────────────────────────────────────
+posthog>=3.0.0,<4.0.0             # Product analytics. Pin <4: v7 renamed the ctor
+                                 # arg (api_key->project_api_key) and flipped capture()
+                                 # to event-first, breaking all wizard call sites.
+
 # ── Utilities ─────────────────────────────────────────────────────────────────
 python-dotenv>=1.1.0              # .env file loading for API keys
 

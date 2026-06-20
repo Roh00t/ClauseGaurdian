@@ -12,6 +12,7 @@ Routes:
 Run from the repo root (note the package path — backend/__init__.py must exist):
   python3.13 -m uvicorn backend.main:app --host 127.0.0.1 --port 8000 --reload
 """
+import atexit
 import os
 import sys
 import json
@@ -28,6 +29,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from dotenv import load_dotenv
 
+from posthog import Posthog
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
@@ -35,12 +37,31 @@ from slowapi.middleware import SlowAPIMiddleware
 
 load_dotenv()
 
+# Analytics is disabled when there's no token, or when CLAUSEGUARD_DISABLE_ANALYTICS=1
+# (the 34-test suite sets this so test runs never touch the production PostHog
+# project or add network latency). Exception autocapture is OFF: uncurated
+# tracebacks could carry document text/filenames -> guardrail #13 (metadata only
+# to external services). All events are explicit capture() calls with curated props.
+_POSTHOG_TOKEN = os.getenv("POSTHOG_PROJECT_TOKEN", "")
+_ANALYTICS_DISABLED = (not _POSTHOG_TOKEN) or os.getenv("CLAUSEGUARD_DISABLE_ANALYTICS") == "1"
+posthog_client = Posthog(
+    api_key=_POSTHOG_TOKEN or "disabled",
+    host=os.getenv("POSTHOG_HOST", "https://us.i.posthog.com"),
+    disabled=_ANALYTICS_DISABLED,
+    enable_exception_autocapture=False,
+)
+atexit.register(posthog_client.shutdown)
+
 from backend.db import get_conn, init_db, migrate_db
+from backend.supabase_client import (
+    verify_user_token, get_user_profile, increment_analyses_used,
+    log_analysis_metadata, FREE_ANALYSIS_LIMIT,
+)
 from backend.scraper import get_regulations
 from backend.extractor import extract_text, extract_context_text
 from backend.redaction import redact_documents
 from backend.entity_map import build_entity_map, apply_entity_map
-from backend.analyzer import analyze_combined
+from backend.analyzer import analyze_combined, answer_followup
 from backend.report_generator import generate_docx
 from src.terminal3_signer import sign_report_hash
 from backend.security import (
@@ -88,6 +109,7 @@ def _check_session_rate(token: str, limit: int = _SESSION_LIMIT, window: int = _
 @app.exception_handler(RateLimitExceeded)
 async def _rate_limit_handler(request: Request, exc: RateLimitExceeded):
     from fastapi.responses import JSONResponse
+    posthog_client.capture("anonymous", "rate_limit_exceeded", {"path": request.url.path})
     return JSONResponse(
         status_code=429,
         content={"detail": "Too many requests — please wait a minute and try again."},
@@ -122,9 +144,60 @@ async def tos():
     return FileResponse(FRONTEND_DIR / "tos.html")
 
 
+@app.get("/about")
+async def about():
+    """About page (Phase 9). Static, no user data."""
+    return FileResponse(FRONTEND_DIR / "about.html")
+
+
+@app.get("/pricing")
+async def pricing():
+    """Pricing page (Phase 9). Static; checkout disabled (Stripe deferred)."""
+    return FileResponse(FRONTEND_DIR / "pricing.html")
+
+
+@app.get("/support")
+async def support():
+    """Support page (Phase 9). Static, no user data."""
+    return FileResponse(FRONTEND_DIR / "support.html")
+
+
 @app.get("/health")
 async def health():
     return {"status": "ok", "ts": datetime.now().isoformat()}
+
+
+# ── Public config (v3 B) ─────────────────────────────────────────────────────
+@app.get("/api/config")
+async def public_config():
+    """Returns public (non-secret) config the browser needs — Supabase URL + anon key.
+    The anon/publishable key is designed to be public; it enforces RLS on the DB side."""
+    return {
+        "supabase_url": os.getenv("SUPABASE_URL", ""),
+        "supabase_anon_key": os.getenv("SUPABASE_PUBLISHABLE_KEY", ""),
+        "posthog_token": os.getenv("POSTHOG_PROJECT_TOKEN", ""),
+        "posthog_host": os.getenv("POSTHOG_HOST", "https://us.i.posthog.com"),
+    }
+
+
+# ── Current user (v3 C) ──────────────────────────────────────────────────────
+@app.get("/api/me")
+async def me(request: Request):
+    """Return the logged-in user's tier + usage so the frontend can gate UI.
+    401 if no/invalid token. Metadata only — no document content (guardrail #13)."""
+    auth_header = request.headers.get("Authorization", "")
+    if not auth_header.startswith("Bearer "):
+        raise HTTPException(401, "Not authenticated.")
+    user = verify_user_token(auth_header[7:].strip())
+    if not user:
+        raise HTTPException(401, "Invalid or expired session.")
+    profile = get_user_profile(user["user_id"]) or {}
+    return {
+        "email": user["email"],
+        "tier": profile.get("tier", "free"),
+        "analyses_used": profile.get("analyses_used", 0),
+        "limit": FREE_ANALYSIS_LIMIT,
+    }
 
 
 # ── Regulations ──────────────────────────────────────────────────────────────
@@ -149,6 +222,7 @@ async def analyze(
     contract_files: list[UploadFile] = File(default=[]),
     context_files: list[UploadFile] = File(default=[]),
     chat_context: str = Form(default=""),
+    mode: str = Form(default="dispute"),
 ):
     """Dual-panel upload -> ONE combined analysis+judgment LLM call -> persist.
 
@@ -156,13 +230,38 @@ async def analyze(
     (context_files) is optional (dispute context: PDF/TXT/EML). With no context,
     the judgment comes back INSUFFICIENT_INFORMATION.
     """
-    # ── 0. Per-session-token rate gate (Phase 5 hybrid). Runs before any other
-    #       work so a throttled session gets 429, not a 400 on body validation.
-    #       Only applies when the client sends X-Session-Token; per-IP (decorator)
-    #       always applies. ──────────────────────────────────────────────────
+    # ── 0a. Per-session-token rate gate (Phase 5 hybrid). ──────────────────────
     session_token = request.headers.get("X-Session-Token")
     if session_token and not _check_session_rate(session_token):
+        posthog_client.capture("anonymous", "rate_limit_exceeded", {"path": "/api/analyze", "gate": "session"})
         raise HTTPException(429, "Too many requests for this session — please wait a minute and try again.")
+
+    # ── 0b. Optional Supabase auth (v3 Part B). ────────────────────────────────
+    # Anonymous requests pass through with NO backend cap (guardrail #14 —
+    # anonymous free-tier cap is frontend-only via localStorage).
+    # Logged-in requests are verified and free-tier is enforced server-side.
+    _auth_user = None   # {user_id, email} if verified, else None
+    _auth_tier = None   # 'free' | 'paid' | None
+    auth_header = request.headers.get("Authorization", "")
+    if auth_header.startswith("Bearer "):
+        jwt_token = auth_header[7:].strip()
+        _auth_user = verify_user_token(jwt_token)
+        if _auth_user:
+            profile = get_user_profile(_auth_user["user_id"])
+            _auth_tier = (profile or {}).get("tier", "free")
+            used = (profile or {}).get("analyses_used", 0)
+            if _auth_tier == "free" and used >= FREE_ANALYSIS_LIMIT:
+                posthog_client.capture(
+                    _auth_user["user_id"],
+                    "free_tier_limit_reached",
+                    {"analyses_used": used, "limit": FREE_ANALYSIS_LIMIT},
+                )
+                raise HTTPException(403, detail={
+                    "code": "FREE_LIMIT_REACHED",
+                    "message": f"Free tier limit of {FREE_ANALYSIS_LIMIT} analyses reached. Upgrade to continue.",
+                    "analyses_used": used,
+                    "limit": FREE_ANALYSIS_LIMIT,
+                })
 
     # ── 1. Validate counts (combined total — PM13/RT4) ─────────────────────
     total_files = len(contract_files) + len(context_files)
@@ -182,6 +281,11 @@ async def analyze(
         content = await f.read()
         total_bytes += len(content)
         if total_bytes > MAX_TOTAL_SIZE_BYTES:
+            posthog_client.capture(
+                _auth_user["user_id"] if _auth_user else "anonymous",
+                "upload_size_exceeded",
+                {"total_bytes": total_bytes, "limit_bytes": MAX_TOTAL_SIZE_BYTES},
+            )
             raise HTTPException(413, "Total upload exceeds 50MB limit.")
         validate_file(f.filename, content)  # raises HTTPException on violation
         result = extract_text(content, f.filename)
@@ -191,6 +295,11 @@ async def analyze(
             contract_errors.append({"filename": f.filename, "error": result.get("error", "No text extracted")})
 
     if not contract_docs:
+        posthog_client.capture(
+            _auth_user["user_id"] if _auth_user else "anonymous",
+            "analysis_file_rejected",
+            {"files_count": len(contract_files), "error_count": len(contract_errors)},
+        )
         raise HTTPException(422, detail={
             "message": "No text could be extracted from any employment document.",
             "tip": "Ensure your PDFs are text-based (not scanned images). Scanned documents require OCR first.",
@@ -272,15 +381,20 @@ async def analyze(
     regs = reg_data.get("regulations", [])
 
     # ── 5. ONE combined LLM call. Timeouts -> 504, never a frozen spinner. ──
+    _distinct_id = _auth_user["user_id"] if _auth_user else "anonymous"
     try:
-        combined = analyze_combined(contract_docs, context_docs, regs, chat_context=redacted_chat)
+        combined = analyze_combined(contract_docs, context_docs, regs, chat_context=redacted_chat, mode=mode)
     except TimeoutError:
+        posthog_client.capture(_distinct_id, "analysis_failed", {"mode": mode, "reason": "timeout"})
         raise HTTPException(504, "Analysis timed out. Please try again with fewer or smaller documents.")
     except ValueError as e:
+        posthog_client.capture(_distinct_id, "analysis_failed", {"mode": mode, "reason": "invalid_json"})
         raise HTTPException(502, detail=f"Analysis returned an unexpected format: {e}")
     except EnvironmentError as e:
+        posthog_client.capture(_distinct_id, "analysis_failed", {"mode": mode, "reason": "env_error"})
         raise HTTPException(500, detail=str(e))
     except Exception as e:
+        posthog_client.capture(_distinct_id, "analysis_failed", {"mode": mode, "reason": "unknown"})
         raise HTTPException(500, detail=f"Analysis error: {e}")
 
     analysis = combined["analysis"]
@@ -300,6 +414,36 @@ async def analyze(
         attestation = sign_report_hash(report_hash)
     except Exception as e:  # noqa: BLE001 -- attestation must never block analysis
         attestation = {"error": f"signing unavailable: {e}", "report_hash": report_hash}
+
+    # ── 5c. v3 auth: increment counter + log metadata for logged-in users. ────
+    # Only runs after a successful analysis. Failure must never block the response.
+    if _auth_user:
+        increment_analyses_used(_auth_user["user_id"])
+        log_analysis_metadata(
+            user_id=_auth_user["user_id"],
+            mode=mode,
+            verdict_category=judgment.get("verdict"),
+            docs_count=len(contract_docs) + len(context_docs),
+        )
+        posthog_client.set(
+            distinct_id=_auth_user["user_id"],
+            properties={"tier": _auth_tier},
+        )
+
+    # ── 5d. PostHog: capture analysis_completed. ─────────────────────────────
+    posthog_client.capture(
+        _distinct_id,
+        "analysis_completed",
+        {
+            "mode": mode,
+            "verdict": judgment.get("verdict"),
+            "overall_severity": analysis.get("overall_severity"),
+            "contract_docs_count": len(contract_docs),
+            "context_docs_count": len(context_docs),
+            "has_chat_context": bool(chat_context.strip()),
+            "auth_tier": _auth_tier or "anonymous",
+        },
+    )
 
     # ── 6. PHASE 2: NO server-side session persistence. ─────────────────────
     # The session (analysis results, entity map, etc.) is stored client-side in
@@ -322,6 +466,8 @@ async def analyze(
         "regulation_source": reg_data.get("source"),
         "analysis": analysis,
         "judgment": judgment,
+        # v3: auth metadata (email only — never PII from documents)
+        "auth": {"email": _auth_user["email"], "tier": _auth_tier} if _auth_user else None,
     }
 
 
@@ -349,12 +495,73 @@ async def download_report(request: Request):
     except Exception as e:  # noqa: BLE001
         raise HTTPException(500, detail=f"Report generation failed: {e}")
 
+    # Attribute to the logged-in user when a valid token is present (else anonymous).
+    _dl_auth = verify_user_token(request.headers.get("Authorization", "")[7:].strip()) \
+        if request.headers.get("Authorization", "").startswith("Bearer ") else None
+    posthog_client.capture(
+        _dl_auth["user_id"] if _dl_auth else "anonymous",
+        "report_downloaded",
+        {"filenames_count": len(filenames), "verdict": (body.get("judgment") or {}).get("verdict")},
+    )
+
     filename = f"ClauseGuard_Report_{datetime.now(timezone.utc).strftime('%Y%m%d_%H%M')}.docx"
     return Response(
         content=docx_bytes,
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
+
+
+# ── Follow-up chat (v3 Part A6) ──────────────────────────────────────────────
+@app.post("/api/chat-followup")
+@limiter.limit(RATE_LIMIT)
+async def chat_followup(request: Request):
+    """Stateless follow-up Q&A after a completed analysis.
+
+    The client sends the redacted-question-safe summary + the employee's raw
+    question. The question is redacted through the SAME regex backstop used for
+    chat_context in /api/analyze before reaching the LLM.
+    """
+    session_token = request.headers.get("X-Session-Token")
+    if session_token and not _check_session_rate(session_token):
+        raise HTTPException(429, "Too many requests for this session — please wait a minute.")
+
+    try:
+        body = await request.json()
+    except Exception:
+        raise HTTPException(400, "Invalid JSON body.")
+
+    question_raw = (body.get("question") or "").strip()
+    context_summary = (body.get("context_summary") or "").strip()
+
+    if not question_raw:
+        raise HTTPException(400, "Question is required.")
+    if len(question_raw) > 1000:
+        raise HTTPException(400, "Question must be 1000 characters or fewer.")
+
+    # Redact the question through the SAME pipeline as Phase 3 chat_context:
+    # the entity map is NOT available server-side for a stateless call, so we
+    # apply only the regex backstop (Pass 1 — NRIC/email/phone/address). This
+    # is the same backstop used in the analyze endpoint's 3c step.
+    from backend.redaction import redact_documents
+    redacted_result = redact_documents([{"filename": "question", "text": question_raw}])
+    redacted_question = redacted_result[0]["text"]
+
+    try:
+        answer = answer_followup(redacted_question, context_summary)
+    except TimeoutError:
+        raise HTTPException(504, "Follow-up timed out — please try again.")
+    except Exception as e:
+        raise HTTPException(500, detail=f"Follow-up error: {e}")
+
+    _cf_auth = verify_user_token(request.headers.get("Authorization", "")[7:].strip()) \
+        if request.headers.get("Authorization", "").startswith("Bearer ") else None
+    posthog_client.capture(
+        _cf_auth["user_id"] if _cf_auth else "anonymous",
+        "chat_followup_asked",
+        {"question_length": len(question_raw), "has_context": bool(context_summary)},
+    )
+    return {"answer": answer}
 
 
 # ── Sessions (DEPRECATED — Phase 2) ──────────────────────────────────────────

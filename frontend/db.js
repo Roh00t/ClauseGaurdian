@@ -31,6 +31,7 @@ export async function getDB() {
 //   verdict: string | null,
 //   chat_context: string,       // Phase 3: raw chat context (client-side only)
 //   feedback: object,           // Phase 5: { flagId: {value:'accurate'|'inaccurate', recorded_at} }
+//   followup_history: [{q,a}]?, // v3 A6: follow-up chat turns (client-side only, optional)
 // }
 
 export async function saveSession(session) {

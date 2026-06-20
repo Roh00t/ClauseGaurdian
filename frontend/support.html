@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>ClauseGuard — Support</title>
+<style>
+  :root{ --bg:#1a1a1a; --surface:#242424; --surface-2:#2e2e2e; --border:#2a2a2a;
+         --border-2:#363636; --text:#ececec; --text-2:#999; --text-3:#666; --accent:#d97706; }
+  *{box-sizing:border-box}
+  body{ margin:0; background:var(--bg); color:var(--text);
+        font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;
+        line-height:1.65; }
+  .wrap{ max-width:760px; margin:0 auto; padding:40px 22px 80px; }
+  a{ color:var(--accent); }
+  .nav{ font-size:13px; display:flex; gap:16px; margin-bottom:24px; flex-wrap:wrap; }
+  .nav a{ color:var(--text-2); text-decoration:none; }
+  .nav a:hover{ color:var(--accent); }
+  .nav a.home{ color:var(--accent); }
+  h1{ font-size:26px; margin:0 0 4px; }
+  .sub{ color:var(--text-3); font-size:13px; margin:0 0 28px; }
+  h2{ font-size:18px; margin:30px 0 10px; border-bottom:1px solid var(--border); padding-bottom:6px; }
+  p,li{ font-size:14.5px; color:var(--text); }
+  .card{ background:var(--surface); border:1px solid var(--border); border-radius:10px;
+         padding:18px 18px; margin:14px 0; }
+  .card h3{ font-size:15px; margin:0 0 6px; }
+  .card p{ font-size:13.5px; color:var(--text-2); margin:0 0 12px; }
+  .btn{ display:inline-block; padding:9px 16px; border-radius:8px; font-size:13px; font-weight:600;
+        text-decoration:none; }
+  .btn-primary{ background:var(--accent); color:#fff; }
+  .btn-soon{ background:var(--surface-2); color:var(--text-3); border:1px dashed var(--border-2);
+             cursor:not-allowed; }
+  .pill{ font-size:10px; font-weight:700; letter-spacing:.05em; text-transform:uppercase;
+         color:var(--text-3); border:1px solid var(--border-2); border-radius:10px;
+         padding:2px 8px; margin-left:8px; }
+  .footer{ margin-top:40px; font-size:12px; color:var(--text-3); border-top:1px solid var(--border); padding-top:16px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="nav">
+    <a class="home" href="/">&larr; ClauseGuard</a>
+    <a href="/about">About</a>
+    <a href="/pricing">Pricing</a>
+    <a href="/support">Support</a>
+    <a href="/tos">Privacy &amp; Terms</a>
+  </div>
+
+  <h1>Support</h1>
+  <p class="sub">We're a small Singapore-only MVP — here's how to get help.</p>
+
+  <h2>Community support <span class="pill">Free</span></h2>
+  <div class="card">
+    <h3>Ask the community</h3>
+    <p>
+      The fastest way to get help with how ClauseGuard works, share feedback, or hear how
+      others handled a similar situation. Our community space is launching soon — until
+      then, email us directly and we'll point you the right way.
+    </p>
+    <span class="btn btn-soon" aria-disabled="true">Community — coming soon</span>
+  </div>
+
+  <h2>Priority support <span class="pill">Pro</span></h2>
+  <div class="card">
+    <h3>Faster, dedicated help</h3>
+    <p>
+      Priority support is available to ClauseGuard Pro members. Pro isn't on sale yet —
+      see <a href="/pricing">Pricing</a> for what's planned and to register interest.
+      Once Pro launches, members will get a dedicated support channel here.
+    </p>
+    <span class="btn btn-soon" aria-disabled="true">Available to Pro members</span>
+  </div>
+
+  <h2>Report a bug</h2>
+  <div class="card">
+    <h3>Found something broken or wrong?</h3>
+    <p>
+      Email us a short description of what you did and what happened. Please
+      <strong>don't attach your employment documents</strong> — we don't need them to
+      look into a bug, and we'd rather you keep them private.
+    </p>
+    <a class="btn btn-primary"
+       href="mailto:hello@clauseguard.sg?subject=ClauseGuard%20bug%20report&body=What%20I%20did%3A%0A%0AWhat%20happened%3A%0A%0AWhat%20I%20expected%3A%0A%0A(Please%20do%20not%20attach%20your%20documents.)">
+      Email a bug report
+    </a>
+  </div>
+
+  <div class="footer">
+    ClauseGuard · Not legal advice · For legal help: probono.sg ·
+    MOM: mom.gov.sg · TADM: tadm.gov.sg
+  </div>
+</div>
+</body>
+</html>

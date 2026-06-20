@@ -10,3 +10,4 @@ venv/
 .venv/
 test/
 tests/
+.claude/settings.local.json

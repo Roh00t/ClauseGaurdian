@@ -269,6 +269,24 @@ body{
 }
 .clear-btn:hover{border-color:var(--text-3)}
 
+/* ── MODE SELECTOR (v3) ──────────────────────────────────────── */
+.mode-selector{display:flex;gap:6px;margin-bottom:12px}
+.mode-tab{
+  flex:1;
+  padding:8px 4px;
+  background:var(--surface);
+  border:1px solid var(--border-2);
+  border-radius:var(--radius-sm);
+  font:600 12px var(--font);
+  color:var(--text-2);
+  cursor:pointer;
+  text-align:center;
+  transition:border-color .15s,color .15s,background .15s;
+}
+.mode-tab:hover{border-color:var(--accent);color:var(--text)}
+.mode-tab.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent)}
+.mode-desc{font-size:11px;color:var(--text-3);margin-bottom:10px;line-height:1.45;min-height:28px}
+
 /* ── DUAL UPLOAD PANELS ───────────────────────────────────────── */
 .upload-section{border-top:1px solid var(--border);padding:12px 16px;flex-shrink:0}
 .upload-panels{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:10px}
@@ -560,6 +578,69 @@ body{
 .check-title{font-size:13px;font-weight:500}
 .check-reason{font-size:11px;color:var(--text-2);margin-top:2px}
 
+/* ── ELI5 card (v3 A5) ───────────────────────────────────────── */
+.eli5-card{
+  background:rgba(217,119,6,.07);
+  border:1px solid rgba(217,119,6,.3);
+  border-radius:var(--radius);
+  padding:18px 20px;
+}
+.eli5-headline{font-size:16px;font-weight:700;line-height:1.4;margin-bottom:12px;color:var(--text)}
+.eli5-bullets{list-style:none;display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+.eli5-bullets li{font-size:13px;color:var(--text);line-height:1.55;padding-left:16px;position:relative}
+.eli5-bullets li::before{content:'→';position:absolute;left:0;color:var(--accent)}
+.eli5-bottom{font-size:13px;font-weight:600;color:var(--accent);margin-top:4px}
+.eli5-toggle{
+  display:inline-block;
+  margin-top:12px;
+  font-size:12px;
+  color:var(--text-3);
+  cursor:pointer;
+  border:none;
+  background:none;
+  padding:0;
+  text-decoration:underline;
+}
+.eli5-toggle:hover{color:var(--text-2)}
+
+/* ── Follow-up chat (v3 A6) ─────────────────────────────────── */
+.followup-area{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:16px;
+}
+.followup-history{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+  margin-bottom:12px;
+  max-height:300px;
+  overflow-y:auto;
+}
+.followup-q{font-size:13px;font-weight:600;color:var(--accent);line-height:1.5}
+.followup-a{font-size:13px;color:var(--text);line-height:1.6;padding-left:12px;border-left:2px solid var(--border-2)}
+.followup-input-row{display:flex;gap:8px}
+.followup-input{
+  flex:1;
+  background:var(--surface-2);
+  color:var(--text);
+  border:1px solid var(--border-2);
+  border-radius:var(--radius-sm);
+  padding:8px 11px;
+  font:13px var(--font);
+}
+.followup-send{
+  padding:8px 14px;
+  background:var(--accent);
+  color:#fff;
+  border:none;
+  border-radius:var(--radius-sm);
+  font:600 12px var(--font);
+  cursor:pointer;
+}
+.followup-send:disabled{opacity:.4;cursor:not-allowed}
+
 /* Disclaimer */
 .disclaimer{
   font-size:11px;
@@ -609,6 +690,67 @@ body{
   pointer-events:none;
 }
 .toast.show{opacity:1}
+
+/* ── AUTH MODAL (v3 B) ───────────────────────────────────────── */
+.auth-modal-overlay{
+  position:fixed;inset:0;
+  background:rgba(0,0,0,.65);
+  display:flex;align-items:center;justify-content:center;
+  z-index:300;
+}
+.auth-modal{
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:28px 32px;
+  width:360px;
+  max-width:calc(100vw - 40px);
+}
+.auth-modal h2{font-size:17px;font-weight:700;margin-bottom:4px}
+.auth-modal .auth-sub{font-size:12px;color:var(--text-3);margin-bottom:20px}
+.auth-field{display:flex;flex-direction:column;gap:5px;margin-bottom:14px}
+.auth-field label{font-size:11px;font-weight:600;color:var(--text-2)}
+.auth-field input{
+  background:var(--surface-2);color:var(--text);
+  border:1px solid var(--border-2);border-radius:var(--radius-sm);
+  padding:9px 11px;font:13px var(--font);
+}
+.auth-field input:focus{outline:none;border-color:var(--accent)}
+.auth-submit{
+  width:100%;padding:10px;
+  background:var(--accent);color:#fff;
+  border:none;border-radius:var(--radius-sm);
+  font:600 13px var(--font);cursor:pointer;margin-bottom:10px;
+}
+.auth-submit:disabled{opacity:.4;cursor:not-allowed}
+.auth-err{font-size:12px;color:var(--red);min-height:18px;margin-bottom:8px}
+.auth-switch{font-size:12px;color:var(--text-3);text-align:center}
+.auth-switch a{color:var(--accent);cursor:pointer;text-decoration:underline}
+.auth-close{
+  float:right;background:none;border:none;
+  color:var(--text-3);font-size:18px;cursor:pointer;margin:-4px -4px 0 0;
+}
+.auth-topbar-btn{
+  padding:6px 12px;
+  background:transparent;
+  border:1px solid var(--border-2);
+  border-radius:var(--radius-sm);
+  font:600 12px var(--font);
+  color:var(--text-2);
+  cursor:pointer;
+  transition:border-color .15s,color .15s;
+}
+.auth-topbar-btn:hover{border-color:var(--accent);color:var(--accent)}
+.auth-user-pill{
+  display:flex;align-items:center;gap:8px;
+  font-size:12px;color:var(--text-2);
+}
+.auth-tier-badge{
+  font-size:10px;font-weight:700;
+  padding:2px 7px;border-radius:4px;
+}
+.auth-tier-free{background:rgba(96,165,250,.15);color:var(--blue)}
+.auth-tier-paid{background:rgba(34,197,94,.15);color:var(--green)}
 
 /* Fix 8: 375px mobile. Stack the app vertically and collapse the 256px fixed
    sidebar into a full-width top section (keeps "Clear my data" + Privacy
@@ -664,6 +806,11 @@ body{
       Using a shared or public computer? Click "Clear my data" when done, or use a
       private/incognito window.
     </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:8px">
+      <a href="/about" data-nav="1" style="color:var(--text-2);font-size:11px;text-decoration:none">About</a>
+      <a href="/pricing" data-nav="1" style="color:var(--text-2);font-size:11px;text-decoration:none">Pricing</a>
+      <a href="/support" data-nav="1" style="color:var(--text-2);font-size:11px;text-decoration:none">Support</a>
+    </div>
     <a href="/tos" target="_blank" data-i18n="privacy_link"
        style="color:var(--accent);font-size:11px;display:block;margin-bottom:8px">Privacy Policy &amp; Terms</a>
     Data sourced from mom.gov.sg · For reference only
@@ -686,6 +833,10 @@ body{
       <option value="ms">MS</option>
       <option value="tl">TL</option>
     </select>
+    <!-- v3 B: auth state in topbar -->
+    <div id="authTopbar" style="display:flex;align-items:center;gap:8px;margin-right:8px">
+      <button class="auth-topbar-btn" onclick="openAuthModal('signin')" id="signInBtn">Sign in</button>
+    </div>
     <div class="reg-status" id="regStatus">
       <div class="reg-dot" id="regDot"></div>
       <span id="regLabel">Checking MOM regulations…</span>
@@ -721,6 +872,17 @@ body{
   <!-- Dual upload section -->
   <div class="upload-section">
     <div data-i18n="disclaimer" style="font-size:11px;color:var(--text-3);margin-bottom:10px;line-height:1.5">Not legal advice and not exhaustive. A 'no red flags found' result does not guarantee a contract is fair. Singapore employment contracts (MVP scope).</div>
+
+    <!-- v3 A2: Mode selector. Default = dispute (matches backend default so 34-test
+         regression suite, which calls /api/analyze directly without a mode param,
+         still gets the same prompt framing). -->
+    <div class="mode-selector">
+      <button class="mode-tab" data-mode="onboarding" onclick="setMode('onboarding')">📋 Reviewing Contract</button>
+      <button class="mode-tab" data-mode="offboarding" onclick="setMode('offboarding')">🚪 Leaving a Job</button>
+      <button class="mode-tab active" data-mode="dispute" onclick="setMode('dispute')">⚖ Dispute / Grievance</button>
+    </div>
+    <div class="mode-desc" id="modeDesc">Reviewing an active dispute or workplace grievance — get a verdict, evidence summary, and MOM referral draft.</div>
+
     <div class="upload-panels">
 
       <!-- Panel A — Employment Documents (required, PDF) -->
@@ -801,6 +963,54 @@ body{
 
 <div class="toast" id="toast" role="alert" aria-live="assertive"></div>
 
+<!-- v3 C: Upgrade modal (Stripe deferred — informational only, no checkout). -->
+<div class="auth-modal-overlay" id="upgradeModal" style="display:none" role="dialog" aria-modal="true" aria-label="Upgrade to ClauseGuard Pro">
+  <div class="auth-modal" style="width:400px">
+    <button class="auth-close" onclick="closeUpgradeModal()" aria-label="Close">×</button>
+    <h2>Upgrade to ClauseGuard Pro</h2>
+    <p class="auth-sub" id="upgradeReason">Unlock unlimited analyses and downloads.</p>
+    <ul style="list-style:none;display:flex;flex-direction:column;gap:10px;margin:18px 0">
+      <li style="font-size:13px;color:var(--text);display:flex;gap:10px"><span style="color:var(--green)">✓</span> Unlimited document analyses</li>
+      <li style="font-size:13px;color:var(--text);display:flex;gap:10px"><span style="color:var(--green)">✓</span> Unlimited DOCX evidence-pack downloads</li>
+      <li style="font-size:13px;color:var(--text);display:flex;gap:10px"><span style="color:var(--green)">✓</span> Saved follow-up chat history across sessions</li>
+      <li style="font-size:13px;color:var(--text-3);display:flex;gap:10px"><span>·</span> Plain-English summaries stay free for everyone</li>
+    </ul>
+    <div style="background:var(--surface-2);border:1px solid var(--border-2);border-radius:var(--radius-sm);padding:12px 14px;font-size:12.5px;color:var(--text-2);line-height:1.5">
+      💳 <strong>Payments are coming soon.</strong> ClauseGuard Pro isn't on sale yet —
+      we're a Singapore-only MVP. To be notified when Pro launches (pricing in SGD),
+      email <a href="mailto:hello@clauseguard.sg" style="color:var(--accent)">hello@clauseguard.sg</a>.
+    </div>
+    <button class="auth-submit" style="margin-top:16px" onclick="closeUpgradeModal()">Got it</button>
+  </div>
+</div>
+
+<!-- v3 B: Auth modal (sign in / sign up). Hidden by default. -->
+<div class="auth-modal-overlay" id="authModal" style="display:none" role="dialog" aria-modal="true" aria-label="Sign in or create account">
+  <div class="auth-modal">
+    <button class="auth-close" onclick="closeAuthModal()" aria-label="Close">×</button>
+    <h2 id="authModalTitle">Sign in</h2>
+    <p class="auth-sub" id="authModalSub">Save your analyses and access them from any device.</p>
+    <div class="auth-field">
+      <label for="auth-email">Email</label>
+      <input type="email" id="auth-email" autocomplete="email" placeholder="you@email.com"
+        onkeydown="if(event.key==='Enter')submitAuth()"/>
+    </div>
+    <div class="auth-field">
+      <label for="auth-password">Password</label>
+      <input type="password" id="auth-password" autocomplete="current-password" placeholder="••••••••"
+        onkeydown="if(event.key==='Enter')submitAuth()"/>
+    </div>
+    <div class="auth-err" id="auth-err"></div>
+    <button class="auth-submit" id="auth-submit" onclick="submitAuth()">Sign in</button>
+    <div class="auth-switch">
+      <span id="authSwitchText">Don't have an account?</span>
+      <a onclick="toggleAuthMode()">
+        <span id="authSwitchLink">Create one</span>
+      </a>
+    </div>
+  </div>
+</div>
+
 <script>
 // ── STATE ────────────────────────────────────────────────────
 let contractFiles = [];   // Panel A — employment documents
@@ -809,6 +1019,12 @@ let currentSession = null;
 let currentReport = null;   // Phase 4: holds the currently-displayed analysis for DOCX download
 let currentSessionId = null; // Phase 5: id of the currently-displayed session (for feedback writes)
 let _i18n = null;            // Phase 5: loaded i18n module (translations + applyTranslations)
+let _currentMode = 'dispute'; // v3 A2: analysis mode (onboarding|offboarding|dispute)
+let _followupHistory = [];   // v3 A6: [{q, a}] for current session (client-side only)
+let _authModule = null;       // v3 B: loaded auth.js module
+let _currentUser = null;      // v3 B: {email, access_token} | null
+let _authIsSignup = false;    // v3 B: modal mode toggle
+let _pendingIdentify = null;  // PostHog: userId to identify once posthog-js finishes loading
 
 // Phase 5: stable per-tab token for the per-session rate gate (X-Session-Token).
 function getSessionToken() {
@@ -836,6 +1052,43 @@ async function recordFeedback(flagId, value) {
   }
 }
 
+// ── POSTHOG CLIENT-SIDE ANALYTICS ────────────────────────────
+async function setupPostHog() {
+  try {
+    const cfg = await fetch('/api/config').then(r => r.json()).catch(() => null);
+    if (!cfg?.posthog_token) return;
+    await new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/posthog-js@1/dist/array.full.js';
+      s.onload = resolve;
+      s.onerror = reject;
+      document.head.appendChild(s);
+    });
+    if (window.posthog) {
+      window.posthog.init(cfg.posthog_token, {
+        api_host: cfg.posthog_host || 'https://us.i.posthog.com',
+        person_profiles: 'identified_only',
+        capture_pageview: false,
+      });
+      // Flush a pending identify queued before posthog-js finished loading
+      // (setupPostHog is fire-and-forget; setupAuth may restore a session first).
+      if (_pendingIdentify) { window.posthog.identify(_pendingIdentify); _pendingIdentify = null; }
+    }
+  } catch {}
+}
+
+// Safe wrappers — no-op if posthog hasn't loaded (or is blocked). phIdentify
+// queues until load so the returning-visitor (session-restored) path still
+// identifies once the script arrives.
+function phIdentify(userId) {
+  if (!userId) return;
+  if (window.posthog) window.posthog.identify(userId);
+  else _pendingIdentify = userId;
+}
+function phCapture(event, props) {
+  try { if (window.posthog) window.posthog.capture(event, props || {}); } catch {}
+}
+
 // ── INIT ─────────────────────────────────────────────────────
 async function init() {
   await setupI18n();
@@ -847,6 +1100,8 @@ async function init() {
   setupChatCounter();
   setupDownload();
   applySidebarTabindex();
+  setupPostHog();       // fire-and-forget — non-blocking
+  await setupAuth();    // v3 B: initialise auth state
 }
 
 // Phase 5: multi-language UI copy (EN/MS/TL). Persisted in localStorage.
@@ -860,6 +1115,7 @@ async function setupI18n() {
       sel.addEventListener('change', () => {
         _i18n.setLang(sel.value);
         _i18n.applyTranslations(sel.value);
+        phCapture('language_switched', { language: sel.value });   // funnel event
       });
     }
     _i18n.applyTranslations(lang);
@@ -874,7 +1130,9 @@ function applySidebarTabindex() {
   const sidebar = document.querySelector('.sidebar');
   if (!sidebar) return;
   sidebar.querySelectorAll('button, a, .session-item').forEach((el) => {
-    const keep = el.id === 'clear-data-btn' || el.getAttribute('data-i18n') === 'privacy_link';
+    const keep = el.id === 'clear-data-btn'
+      || el.getAttribute('data-i18n') === 'privacy_link'
+      || el.getAttribute('data-nav') === '1';   // About/Pricing/Support stay tabbable
     el.setAttribute('tabindex', keep ? '0' : '-1');
   });
 }
@@ -893,6 +1151,18 @@ function setupDownload() {
   if (!btn) return;
   btn.addEventListener('click', async () => {
     if (!currentReport || !currentReport.analysis) { showToast('Run an analysis first.'); return; }
+
+    // v3 C: DOCX download is a paid gate. Free/anonymous get 1 free download (a
+    // taste); subsequent downloads prompt upgrade. Paid users are never gated.
+    // Tracked via localStorage (frontend-only — pre-Stripe this gate exists to
+    // exercise the paid-UI, not as hard security). The DOCX itself always contains
+    // every red flag regardless of the A7 display cap.
+    if (!isPaid() && localStorage.getItem('clauseguard_docx_used')) {
+      phCapture('paywall_hit', { mode: _currentMode, gate: 'docx_download' });  // funnel event
+      openUpgradeModal('You\'ve used your free report download. Upgrade for unlimited DOCX evidence packs.');
+      return;
+    }
+
     // entity_map is stored {real -> placeholder}; invert to {placeholder -> real}
     // for de-redaction. This map stays in the browser and is sent only to our own
     // /api/download, which streams the file back and persists nothing.
@@ -920,12 +1190,268 @@ function setupDownload() {
       a.download = `ClauseGuard_Report_${new Date().toISOString().slice(0, 10)}.docx`;
       document.body.appendChild(a); a.click(); a.remove();
       URL.revokeObjectURL(url);
+      // v3 C: mark the free download as used (only matters for free/anon).
+      if (!isPaid()) localStorage.setItem('clauseguard_docx_used', '1');
     } catch (e) {
       showToast('Download failed — network error.');
     } finally {
       btn.disabled = false; btn.textContent = prev;
     }
   });
+}
+
+// ── v3 B: AUTH ───────────────────────────────────────────────
+async function setupAuth() {
+  try {
+    _authModule = await import('/static/auth.js');
+    // Restore session from storage (supabase-js persists to localStorage)
+    const session = await _authModule.getSession();
+    if (session) {
+      _currentUser = { email: session.user?.email, access_token: session.access_token };
+      await refreshUserTier();
+      phIdentify(session.user?.id);   // returning visitor: re-identify on restored session
+    }
+    // Listen for auth state changes (sign in/out from any tab)
+    await _authModule.onAuthStateChange(async (event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        _currentUser = { email: session.user?.email, access_token: session.access_token };
+        await refreshUserTier();
+        phIdentify(session.user?.id);
+      } else if (event === 'SIGNED_OUT') {
+        _currentUser = null;
+        try { if (window.posthog) window.posthog.reset(); } catch {}  // disassociate user
+      } else if (event === 'TOKEN_REFRESHED' && session) {
+        _currentUser = { ...(_currentUser || {}), access_token: session.access_token };
+      }
+      updateAuthTopbar();
+    });
+    updateAuthTopbar();
+  } catch (e) {
+    console.warn('Auth setup failed (non-fatal):', e);
+  }
+}
+
+// v3 C: fetch the user's tier + usage so the UI can gate paid features.
+async function refreshUserTier() {
+  if (!_currentUser?.access_token) return;
+  try {
+    const r = await fetch('/api/me', { headers: { 'Authorization': `Bearer ${_currentUser.access_token}` } });
+    if (r.ok) {
+      const me = await r.json();
+      _currentUser.tier = me.tier;
+      _currentUser.analyses_used = me.analyses_used;
+      _currentUser.limit = me.limit;
+    }
+  } catch {}
+}
+
+// v3 C: is the current user a paid subscriber? Anonymous + free both return false.
+function isPaid() {
+  return _currentUser?.tier === 'paid';
+}
+
+// ── v3 C: UPGRADE MODAL (Stripe deferred — informational only) ───────────────
+function openUpgradeModal(reason) {
+  const sub = document.getElementById('upgradeReason');
+  if (sub && reason) sub.textContent = reason;
+  document.getElementById('upgradeModal').style.display = 'flex';
+}
+function closeUpgradeModal() {
+  document.getElementById('upgradeModal').style.display = 'none';
+}
+
+function updateAuthTopbar() {
+  const bar = document.getElementById('authTopbar');
+  if (!bar) return;
+  if (_currentUser?.email) {
+    const tier = _currentUser.tier || 'free';
+    const tierBadge = tier === 'paid'
+      ? `<span class="auth-tier-badge auth-tier-paid">PRO</span>`
+      : `<span class="auth-tier-badge auth-tier-free">FREE</span>`;
+    const upgradeBtn = tier === 'paid' ? '' :
+      `<button class="auth-topbar-btn" onclick="openUpgradeModal('Unlock unlimited analyses and downloads.')" style="border-color:var(--accent);color:var(--accent)">Upgrade</button>`;
+    bar.innerHTML = `
+      <div class="auth-user-pill">
+        ${tierBadge}
+        <span>${esc(_currentUser.email)}</span>
+        ${upgradeBtn}
+        <button class="auth-topbar-btn" onclick="handleSignOut()">Sign out</button>
+      </div>`;
+  } else {
+    bar.innerHTML = `<button class="auth-topbar-btn" onclick="openAuthModal('signin')" id="signInBtn">Sign in</button>`;
+  }
+}
+
+function openAuthModal(mode) {
+  _authIsSignup = (mode === 'signup');
+  _setAuthModalMode(_authIsSignup);
+  document.getElementById('authModal').style.display = 'flex';
+  document.getElementById('auth-email').focus();
+}
+
+function closeAuthModal() {
+  document.getElementById('authModal').style.display = 'none';
+  document.getElementById('auth-err').textContent = '';
+  document.getElementById('auth-email').value = '';
+  document.getElementById('auth-password').value = '';
+}
+
+function toggleAuthMode() {
+  _authIsSignup = !_authIsSignup;
+  _setAuthModalMode(_authIsSignup);
+}
+
+function _setAuthModalMode(isSignup) {
+  document.getElementById('authModalTitle').textContent = isSignup ? 'Create account' : 'Sign in';
+  document.getElementById('authModalSub').textContent = isSignup
+    ? 'Free to start · No credit card required.'
+    : 'Save your analyses and access them from any device.';
+  document.getElementById('auth-submit').textContent = isSignup ? 'Create account' : 'Sign in';
+  document.getElementById('authSwitchText').textContent = isSignup ? 'Already have an account?' : "Don't have an account?";
+  document.getElementById('authSwitchLink').textContent = isSignup ? 'Sign in' : 'Create one';
+  document.getElementById('auth-err').textContent = '';
+  // password autocomplete hint
+  document.getElementById('auth-password').autocomplete = isSignup ? 'new-password' : 'current-password';
+}
+
+async function submitAuth() {
+  if (!_authModule) { showToast('Auth not available — please refresh.'); return; }
+  const email = document.getElementById('auth-email').value.trim();
+  const password = document.getElementById('auth-password').value;
+  const errEl = document.getElementById('auth-err');
+  const btn = document.getElementById('auth-submit');
+  if (!email || !password) { errEl.textContent = 'Email and password are required.'; return; }
+  btn.disabled = true;
+  errEl.textContent = '';
+  try {
+    if (_authIsSignup) {
+      await _authModule.signUp(email, password);
+      errEl.style.color = 'var(--green)';
+      errEl.textContent = 'Account created! Check your email to confirm, then sign in.';
+      try { if (window.posthog) posthog.capture('user_signed_up', { signup_method: 'email' }); } catch {}
+      setTimeout(() => { _authIsSignup = false; _setAuthModalMode(false); }, 2000);
+    } else {
+      const data = await _authModule.signIn(email, password);
+      _currentUser = { email, access_token: data.session?.access_token };
+      try {
+        if (window.posthog) {
+          const userId = data.session?.user?.id;
+          if (userId) posthog.identify(userId);
+          posthog.capture('user_logged_in', { method: 'email' });
+        }
+      } catch {}
+      updateAuthTopbar();
+      closeAuthModal();
+      showToast(`Signed in as ${email}`);
+    }
+  } catch (e) {
+    errEl.style.color = 'var(--red)';
+    errEl.textContent = e?.message || 'Authentication failed — please try again.';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function handleSignOut() {
+  if (_authModule) await _authModule.signOut();
+  _currentUser = null;
+  updateAuthTopbar();
+  showToast('Signed out.');
+}
+
+// ── v3 A2: MODE SELECTOR ─────────────────────────────────────
+const _modeDescs = {
+  onboarding: 'Reviewing a contract before signing — check terms, spot one-sided clauses, and know what to negotiate.',
+  offboarding: 'Leaving or just left a job — protect exit rights, final pay, CPF, references, and post-employment obligations.',
+  dispute: 'Reviewing an active dispute or workplace grievance — get a verdict, evidence summary, and MOM referral draft.',
+};
+function setMode(mode) {
+  _currentMode = mode;
+  document.querySelectorAll('.mode-tab').forEach(t =>
+    t.classList.toggle('active', t.dataset.mode === mode));
+  const desc = document.getElementById('modeDesc');
+  if (desc) desc.textContent = _modeDescs[mode] || '';
+  phCapture('mode_selected', { mode });   // funnel event
+}
+
+// ── v3 A6: FOLLOW-UP CHAT ─────────────────────────────────────
+async function sendFollowup() {
+  const input = document.getElementById('followup-input');
+  const btn = document.getElementById('followup-send');
+  const question = (input?.value || '').trim();
+  if (!question || !currentReport) return;
+  if (!btn || btn.disabled) return;
+
+  btn.disabled = true;
+  input.value = '';
+
+  // Build a compact context from the current report (ELI5 summary + verdict).
+  const analysis = currentReport.analysis?.analysis || {};
+  const judgment = currentReport.analysis?.judgment || {};
+  const eli5 = analysis.eli5_summary || {};
+  const contextSummary = [
+    eli5.headline ? `Summary: ${eli5.headline}` : '',
+    analysis.executive_summary ? `Executive summary: ${analysis.executive_summary}` : '',
+    judgment.verdict ? `Verdict: ${judgment.verdict} (${judgment.confidence||'LOW'})` : '',
+    judgment.verdict_reasoning ? `Reasoning: ${judgment.verdict_reasoning}` : '',
+  ].filter(Boolean).join('\n').slice(0, 1500);  // cap to avoid LLM context bloat
+
+  // Show question immediately in history.
+  _followupHistory.push({ q: question, a: null });
+  renderFollowupHistory();
+
+  try {
+    const followupHeaders = { 'Content-Type': 'application/json', 'X-Session-Token': getSessionToken() };
+    if (_currentUser?.access_token) followupHeaders['Authorization'] = `Bearer ${_currentUser.access_token}`;
+    const resp = await fetch('/api/chat-followup', {
+      method: 'POST',
+      headers: followupHeaders,
+      body: JSON.stringify({ question, context_summary: contextSummary }),
+    });
+    const body = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      _followupHistory[_followupHistory.length - 1].a = '⚠ Error: ' + (body.detail || 'Please try again.');
+    } else {
+      // De-redact answer using the stored entity map (browser-only).
+      const rawMap = currentReport.analysis?.entity_map || {};
+      const deRedact = Object.fromEntries(Object.entries(rawMap).map(([real, ph]) => [ph, real]));
+      let answer = body.answer || '';
+      for (const [ph, real] of Object.entries(deRedact)) {
+        answer = answer.split(ph).join(real);
+      }
+      _followupHistory[_followupHistory.length - 1].a = answer;
+      // v3 C: persistent chat history is a PAID feature. Free/anonymous can ask
+      // follow-ups, but history is in-memory only (lost on reload/new analysis).
+      // Paid users get it saved to IndexedDB alongside the session.
+      if (isPaid() && currentSessionId) {
+        try {
+          const { getSession, saveSession } = await import('/static/db.js');
+          const session = await getSession(currentSessionId);
+          if (session) await saveSession({ ...session, followup_history: _followupHistory });
+        } catch {}
+      }
+    }
+  } catch {
+    _followupHistory[_followupHistory.length - 1].a = '⚠ Network error — please try again.';
+  }
+  renderFollowupHistory();
+  btn.disabled = false;
+}
+
+function renderFollowupHistory() {
+  const el = document.getElementById('followup-history');
+  if (!el) return;
+  if (!_followupHistory.length) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--text-3)">Ask a follow-up question about your analysis.</div>';
+    return;
+  }
+  el.innerHTML = _followupHistory.map(({ q, a }) => `
+    <div>
+      <div class="followup-q">You: ${esc(q)}</div>
+      <div class="followup-a">${a === null ? '<em style="color:var(--text-3)">Thinking…</em>' : esc(a)}</div>
+    </div>
+  `).join('');
+  el.scrollTop = el.scrollHeight;
 }
 
 // Phase 3: live char counter for the chat context box (2000-char cap).
@@ -1067,6 +1593,9 @@ async function loadSession(id) {
       filenames: (session.contract_filenames || []).concat(session.context_filenames || []),
     };
     showDownloadButton();
+    // v3 A6: restore follow-up history for this session.
+    _followupHistory = session.followup_history || [];
+    renderFollowupHistory();
   } catch(e) {
     hideLoading();
     showToast('Failed to load session from browser storage.');
@@ -1141,6 +1670,7 @@ function newAnalysis() {
   currentSession = null;
   currentReport = null;
   currentSessionId = null;
+  _followupHistory = [];
   const dl = document.getElementById('download-report-btn');
   if (dl) dl.style.display = 'none';
 }
@@ -1167,8 +1697,23 @@ async function runAnalysis() {
     showToast('Add at least one employment document to the Employment Documents panel.');
     return;
   }
+
+  // v3 C: anonymous free cap — 1 free analysis, then prompt signup. Frontend-only
+  // (localStorage), NEVER backend-enforced for anonymous (guardrail #14). Logged-in
+  // users are governed by the backend cap instead, so skip this check for them.
+  if (!_currentUser && localStorage.getItem('clauseguard_free_used')) {
+    phCapture('paywall_hit', { mode: _currentMode, gate: 'anonymous_analysis_cap' });  // funnel event
+    openAuthModal('signup');
+    document.getElementById('authModalSub').textContent =
+      'You\'ve used your free analysis. Create a free account for more (3 included).';
+    return;
+  }
+
   const btn = document.getElementById('analyzeBtn');
   btn.disabled = true;
+
+  // funnel event — fires the moment a real analysis is kicked off (after gates).
+  phCapture('analysis_started', { mode: _currentMode, has_panel_b: contextFiles.length > 0 });
 
   // Capture filenames now — clearFiles() empties the arrays after success.
   const contractNames = contractFiles.map(f => f.name);
@@ -1195,10 +1740,24 @@ async function runAnalysis() {
     // Phase 3: include chat context (redacted server-side via the same entity map).
     const chatText = (document.getElementById('chat-input')?.value || '').trim();
     if (chatText) form.append('chat_context', chatText);
+    // v3 A2: mode selector value.
+    form.append('mode', _currentMode);
+
+    // v3 B: if logged in, attach JWT so backend can enforce free-tier cap.
+    // Refresh token first in case it's near expiry.
+    let freshToken = null;
+    if (_authModule) {
+      try {
+        const sess = await _authModule.getSession();
+        freshToken = sess?.access_token || _currentUser?.access_token || null;
+      } catch {}
+    }
+    const fetchHeaders = { 'X-Session-Token': getSessionToken() };
+    if (freshToken) fetchHeaders['Authorization'] = `Bearer ${freshToken}`;
 
     const r = await fetch('/api/analyze', {
       method: 'POST', body: form,
-      headers: { 'X-Session-Token': getSessionToken() },  // Phase 5: per-session rate gate
+      headers: fetchHeaders,
     });
     clearInterval(stepTimer);
 
@@ -1206,13 +1765,29 @@ async function runAnalysis() {
       const err = await r.json().catch(() => ({}));
       hideLoading();
       updateAnalyzeButton();
-      showToast(err.detail?.message || err.detail || 'Analysis failed.');
+      // v3 B: free-tier cap reached for logged-in users
+      if (r.status === 403 && err.detail?.code === 'FREE_LIMIT_REACHED') {
+        showToast(`Free limit reached (${err.detail.limit} analyses). Contact us to upgrade.`);
+      } else {
+        showToast(err.detail?.message || err.detail || 'Analysis failed.');
+      }
       return;
     }
 
     const data = await r.json();
     hideLoading();
     clearFiles();
+    _followupHistory = [];  // reset follow-up history for this new analysis
+
+    // v3 C: mark the anonymous free analysis as used (frontend-only cap).
+    if (!_currentUser) {
+      localStorage.setItem('clauseguard_free_used', '1');
+    } else {
+      // Logged-in: refresh tier/usage so the topbar + gates reflect the new count.
+      await refreshUserTier();
+      updateAuthTopbar();
+    }
+
     renderAnalysis({ analysis: data.analysis, judgment: data.judgment,
       redaction_reports: data.redaction_reports, attestation: data.attestation,
       entity_map: data.entity_map, entity_counts: data.entity_counts },
@@ -1387,7 +1962,28 @@ function renderAnalysis(data, contractFilenames, contextFilenames) {
 
   let html = '';
 
+  // ── v3 A5: ELI5 CARD (default view — shown first for all users) ───────────
+  // If no eli5_summary (old sessions), skip the card and show full analysis directly.
+  const eli5 = a.eli5_summary;
+  const hasEli5 = !!(eli5 && eli5.headline);
+  if (hasEli5) {
+    html += `<div class="msg">
+      <div class="msg-header">
+        <div class="msg-icon">💡</div>
+        <span>Plain-English Summary</span>
+      </div>
+      <div class="eli5-card">
+        <div class="eli5-headline">${esc(eli5.headline)}</div>
+        <ul class="eli5-bullets">${(eli5.bullets || []).map(b => `<li>${esc(b)}</li>`).join('')}</ul>
+        <div class="eli5-bottom">➜ ${esc(eli5.bottom_line || '')}</div>
+      </div>
+      <button class="eli5-toggle" onclick="toggleFullAnalysis(this)">See full analysis ↓</button>
+    </div>`;
+  }
+
   // ── 0. DISPUTE JUDGMENT (verdict first) ─────────────────────
+  // Wrap in collapsible section only when ELI5 is present (otherwise show directly).
+  html += hasEli5 ? `<div id="full-analysis-section" style="display:none">` : `<div id="full-analysis-section">`;
   html += renderJudgment(judgment);
 
   // ── 1. EXECUTIVE SUMMARY ────────────────────────────────────
@@ -1468,13 +2064,14 @@ function renderAnalysis(data, contractFilenames, contextFilenames) {
     html += `</div></div>`;
   }
 
-  // ── 3. RED FLAGS ─────────────────────────────────────────────
+  // ── 3. RED FLAGS (A7: top-3 default; "Show all N" expansion) ────────────────
+  // DOCX always gets all flags — cap is frontend-only (guardrail).
   if (a.red_flags?.length) {
-    html += `<div class="msg"><div class="section-h">Red Flags Identified (${a.red_flags.length})</div>
-    <div class="flag-list" id="flagList">`;
-    for (const f of a.red_flags) {
+    const allFlags = a.red_flags;
+    const CAP = 3;
+    const renderFlagCard = (f) => {
       const sClass = `sev-${f.severity}`;
-      html += `<div class="flag-card ${sClass}" id="flag-${f.id}">
+      return `<div class="flag-card ${sClass}" id="flag-${f.id}">
         <div class="flag-header" onclick="toggleFlag(${f.id})">
           <div class="flag-num">#${f.id}</div>
           <div class="flag-title">${esc(f.title)}</div>
@@ -1506,6 +2103,17 @@ function renderAnalysis(data, contractFilenames, contextFilenames) {
           </div>
         </div>
       </div>`;
+    };
+    const visibleFlags = allFlags.slice(0, CAP);
+    const hiddenFlags = allFlags.slice(CAP);
+    html += `<div class="msg"><div class="section-h">Red Flags Identified (${allFlags.length})</div>
+    <div class="flag-list" id="flagList">`;
+    html += visibleFlags.map(renderFlagCard).join('');
+    if (hiddenFlags.length) {
+      html += `<div id="hidden-flags" style="display:none">${hiddenFlags.map(renderFlagCard).join('')}</div>
+        <button onclick="showAllFlags(this)" style="margin-top:8px;background:transparent;border:1px solid var(--border-2);border-radius:var(--radius-sm);padding:8px 14px;font:12px var(--font);color:var(--text-2);cursor:pointer" id="show-all-flags-btn">
+          Show all ${allFlags.length} flags ↓
+        </button>`;
     }
     html += `</div></div>`;
   }
@@ -1613,6 +2221,34 @@ function renderAnalysis(data, contractFilenames, contextFilenames) {
     </div>`;
   }
 
+  html += `</div>`;  // close #full-analysis-section
+
+  // ── v3 A6: FOLLOW-UP CHAT ─────────────────────────────────────
+  html += `<div class="msg">
+    <div class="msg-header">
+      <div class="msg-icon">💬</div>
+      <span>Ask a follow-up question</span>
+    </div>
+    <div class="followup-area">
+      <div class="followup-history" id="followup-history">
+        <div style="font-size:12px;color:var(--text-3)">Ask a follow-up question about your analysis.</div>
+      </div>
+      <div class="followup-input-row">
+        <input class="followup-input" id="followup-input" type="text" maxlength="1000"
+          placeholder="e.g. Can my employer enforce this bond if I wasn't given training?"
+          onkeydown="if(event.key==='Enter')sendFollowup()"/>
+        <button class="followup-send" id="followup-send" onclick="sendFollowup()">Ask</button>
+      </div>
+      <div style="font-size:11px;color:var(--text-3);margin-top:6px">
+        Questions are analyzed against this report only · Not legal advice · For legal advice, consult
+        <a href="https://probono.sg" target="_blank" style="color:var(--accent)">Law Society Pro Bono</a>
+      </div>
+      ${isPaid() ? '' : `<div style="font-size:11px;color:var(--text-3);margin-top:4px">
+        💾 Chat history isn't saved on the free plan. <a onclick="openUpgradeModal('Save your follow-up chat history across sessions with Pro.')" style="color:var(--accent);cursor:pointer">Upgrade to keep it</a>.
+      </div>`}
+    </div>
+  </div>`;
+
   // ── DISCLAIMER ───────────────────────────────────────────────
   html += `<div class="disclaimer">
     ${esc(a.disclaimer || 'This analysis is for informational purposes only and does not constitute legal advice.')}
@@ -1635,6 +2271,23 @@ function renderAnalysis(data, contractFilenames, contextFilenames) {
 function toggleFlag(id) {
   const el = document.getElementById(`flag-${id}`);
   if (el) el.classList.toggle('open');
+}
+
+// v3 A5: toggle between ELI5-only (default) and full analysis view.
+// Section starts hidden; first click reveals it.
+function toggleFullAnalysis(btn) {
+  const section = document.getElementById('full-analysis-section');
+  if (!section) return;
+  const isVisible = section.style.display !== 'none';
+  section.style.display = isVisible ? 'none' : '';
+  btn.textContent = isVisible ? 'See full analysis ↓' : 'Hide full analysis ↑';
+}
+
+// v3 A7: expand all red flags beyond the top-3 cap.
+function showAllFlags(btn) {
+  const hidden = document.getElementById('hidden-flags');
+  if (hidden) hidden.style.display = '';
+  if (btn) btn.style.display = 'none';
 }
 
 function copyDraft(btn, encoded) {
